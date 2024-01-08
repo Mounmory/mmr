@@ -1,7 +1,10 @@
 ﻿#工程名称
-project(strTest)
+project(pluginTest)
 
 include_directories(${CMAKE_SOURCE_DIR}/common/include)
+
+include_directories(${CMAKE_SOURCE_DIR}/tools/include)
+
 file(GLOB COMMON_HEADS "${CMAKE_SOURCE_DIR}/common/include/*.h")
 source_group("include" FILES ${COMMON_HEADS})
 
@@ -20,6 +23,7 @@ add_executable(${PROJECT_NAME} #WIN32
 	
 target_link_libraries(${PROJECT_NAME} 
 	mmrCommon
+	toolCore
 	)
 
 INSTALL(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")

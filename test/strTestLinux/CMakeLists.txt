@@ -1,5 +1,5 @@
 ﻿#工程名称
-project(strTest)
+project(strTestLinux)
 
 include_directories(${CMAKE_SOURCE_DIR}/common/include)
 file(GLOB COMMON_HEADS "${CMAKE_SOURCE_DIR}/common/include/*.h")
@@ -18,8 +18,4 @@ add_executable(${PROJECT_NAME} #WIN32
 	${FILE_HEADS}
 	${FILE_SOURCES})
 	
-target_link_libraries(${PROJECT_NAME} 
-	mmrCommon
-	)
-
 INSTALL(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")

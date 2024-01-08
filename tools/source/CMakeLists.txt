@@ -1,0 +1,2 @@
+﻿ADD_SUBDIRECTORY(plugins)
+ADD_SUBDIRECTORY(toolCore)
