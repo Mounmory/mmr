@@ -38,4 +38,7 @@ private:
 };
 
 END_NAMESPACE(MmrTools)
+
+#define  pluginManager MmrTools::CPluginManager::getPluginManager();
+
 #endif // !CPLUGINMANAGER_H

@@ -18,25 +18,12 @@ source_group("source/util" FILES ${FILE_SOURCES})
 
 add_definitions(-DMMR_COMMON_EXPORT)
 
-#STRING(REPLACE "/O2" "/Od" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
-
-# 增加动态链接库
-add_library(${PROJECT_NAME} SHARED
-	${COMMON_HEADS}
-	${COMMON_SOURCE}
-	${FILE_HEADS}
-	${FILE_SOURCES})
-	
-target_compile_definitions(${PROJECT_NAME} PRIVATE EXPORT_LIBRARY)#同时生成静态库
-
-SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY FOLDER "Common")
-#使用UTF8编译
-#add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
-
-install(TARGETS ${PROJECT_NAME} 
-	RUNTIME DESTINATION bin #window下dll文件
-	LIBRARY DESTINATION bin #linux下.so文件
-	ARCHIVE DESTINATION lib)#静态库
+build_shared_library( mmrCommon
+	#project folder in VS
+	FOLDER Common
+	#源文件
+	SRC_FILES ${COMMON_HEADS} ${COMMON_SOURCE} ${FILE_HEADS} ${FILE_SOURCES}
+	)
 	
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
-    DESTINATION header/common/include)
+	DESTINATION include/common)

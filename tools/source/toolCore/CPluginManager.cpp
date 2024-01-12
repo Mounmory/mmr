@@ -16,8 +16,8 @@ static const char* strLibExtension = ".so";
 
 MmrTools::CPluginManager* MmrTools::CPluginManager::getPluginManager()
 {
-	static MmrTools::CPluginManager* pluginManager = new MmrTools::CPluginManager;
-	return pluginManager;
+	static MmrTools::CPluginManager* pInstance = new MmrTools::CPluginManager;
+	return pInstance;
 }
 
 int MmrTools::CPluginManager::loadPuglins(const std::string& strPath)

@@ -13,9 +13,11 @@
 
 int main(int argc, char **argv)
 {
-	auto  plgmng = MmrTools::CPluginManager::getPluginManager();
+	auto  plgmng = pluginManager;
 	std::string strAppPath, strAppName;
 	MmrCommon::GetAppPathAndName(strAppPath, strAppName);
+	//plgmng->loadPuglins(strAppPath);
+	strAppPath += "/plugins";
 	plgmng->loadPuglins(strAppPath);
 	auto pluginPtr = plgmng->getTool<MmrTools::IToolTest>();
 	if (!pluginPtr)

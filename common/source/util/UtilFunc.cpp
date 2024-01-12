@@ -202,7 +202,7 @@ bool MmrCommon::codeToString(const std::string strIn, std::string& strOut)
 COMMON_FUN_API bool MmrCommon::GetAppPathAndName(std::string& filePath, std::string& exeName)
 {
 #ifdef OS_WIN
-	static char path[MAX_STR_LEN];
+	char path[MAX_STR_LEN];
 	GetModuleFileName(NULL, path, MAX_STR_LEN);
 	filePath = path;
 
