@@ -18,7 +18,7 @@ enum class emLogLevel
 };
 
 
-class CLogger
+class COMMON_CLASS_API CLogger
 {
 public:
 	CLogger();

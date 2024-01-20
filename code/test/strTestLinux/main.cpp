@@ -1,67 +1,73 @@
 ﻿#include "Common.h"
 
 #ifdef OS_WIN
+//#include <iostream>
+//#include <map>
+//#include <functional>
+//
+//// 定义一个通用的函数指针类型
+//template<typename ReturnType, typename... Args>
+//using FuncPtr = std::function<ReturnType(Args...)>;
+//
+//// 定义一个通用的函数类型
+//template<typename ReturnType, typename... Args>
+//using Function = ReturnType(*)(Args...);
+//
+//// 合并多个map的函数
+//template<typename ReturnType, typename... Args>
+//std::map<std::string, FuncPtr<ReturnType, Args...>> mergeMaps(std::map<std::string, FuncPtr<ReturnType, Args...>>... maps) {
+//	std::map<std::string, FuncPtr<ReturnType, Args...>> mergedMap;
+//	(mergedMap.insert(maps.begin(), maps.end()), ...);
+//	return mergedMap;
+//}
+//
+//// 具有不同参数和返回值的函数
+//int increment(int num) {
+//	return num + 1;
+//}
+//
+//float square(float num) {
+//	return num * num;
+//}
+//
+//int main() {
+//	// 创建两个map
+//	std::map<std::string, FuncPtr<int, int>> intFuncMap;
+//	std::map<std::string, FuncPtr<float, float>> floatFuncMap;
+//
+//	// 添加函数指针到map
+//	intFuncMap["increment"] = increment;
+//	floatFuncMap["square"] = square;
+//
+//	// 合并两个map为一个通用的map
+//	auto mergedMap = mergeMaps(intFuncMap, floatFuncMap);
+//
+//	// 调用函数指针
+//	int result1 = mergedMap["increment"](5);
+//	float result2 = mergedMap["square"](2.5f);
+//
+//	std::cout << "Result 1: " << result1 << std::endl;
+//	std::cout << "Result 2: " << result2 << std::endl;
+//
+//	return 0;
+//}
+
 #include <iostream>
-#include <Windows.h>
 #include <string>
-#include <vector>
 
-// 查找文件夹下指定扩展名的文件
-std::vector<std::string> findFilesByExtension(const std::string& folderPath, const std::string& extension)
+int main(int argc, char **argv)
 {
-	std::vector<std::string> files;
-
-	std::string searchPath = folderPath + "\\*." + extension;
-
-	WIN32_FIND_DATA findData;
-	HANDLE hFind = FindFirstFile(searchPath.c_str(), &findData);
-	if (hFind != INVALID_HANDLE_VALUE)
-	{
-		do
-		{
-			if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-			{
-				std::string filePath = folderPath + "\\" + findData.cFileName;
-				files.push_back(filePath);
-			}
-		} while (FindNextFile(hFind, &findData));
-
-		FindClose(hFind);
+	std::cout << "windows test..." << std::endl;
+	if (argc >= 2) {
+		std::cout << "args[1]: " << std::string(argv[1]) << std::endl;
+		std::cout << "args[2]: " << std::string(argv[2]) << std::endl;
 	}
 
-	return files;
-}
-
-int main()
-{
-	std::string folderPath = "D:/驱动driver/Debug";
-	std::string extension = "dll";
-
-	std::vector<std::string> files = findFilesByExtension(folderPath, extension);
-
-	for (const auto& file : files)
-	{
-		std::cout << file << std::endl;
-	}
-
+	std::cout << "输入任意字符继续..." << std::endl;
+	std::cin.get();
 	return 0;
 }
 
-//#include <iostream>
-//#include <string>
-//
-//int main(int argc, char **argv)
-//{
-//	std::cout << "windows test..." << std::endl;
-//	if (argc >= 2) {
-//		std::cout << "args[1]: " << std::string(argv[1]) << std::endl;
-//		std::cout << "args[2]: " << std::string(argv[2]) << std::endl;
-//	}
-//
-//	std::cout << "输入任意字符继续..." << std::endl;
-//	std::cin.get();
-//	return 0;
-//}
 #elif defined OS_LINUX
 #include <iconv.h>
 #include <iostream>

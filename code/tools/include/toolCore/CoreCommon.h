@@ -1,7 +1,7 @@
 ﻿#ifndef TOOLCOMMON_H
 #define TOOLCOMMON_H
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
 	//#pragma execution_character_set("utf-8")
 	#ifdef MMR_TOOLCORE_EXPORT
 		#define TOOLCORE_CLASS_API __declspec(dllexport)

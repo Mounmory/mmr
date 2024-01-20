@@ -100,7 +100,7 @@ bool MmrCommon::localStringToUtf8(const std::string& strIn, std::string& strOut)
 }
 
 
-#define MAX_STR_LEN 1024
+#define MAX_STR_LEN 10
 
 static uint8_t GetTransFlag() //生成随机8位二进制字节
 {
@@ -119,55 +119,53 @@ inline void MmrCommon::byteTranslate(const uint8_t* inBuf, const uint16_t nLen, 
 
 bool MmrCommon::stringToCode(const std::string strIn, std::string& strOut)
 {
-	static uint8_t* pByteTrans = new uint8_t[MAX_STR_LEN];
+	static uint32_t maxByteLen = MAX_STR_LEN;
+	static uint8_t* pByteTrans = new uint8_t[maxByteLen];
+	static std::stringstream ss;
 
 	if (strIn.empty())
 	{
 		return false;
 	}
 
-	uint8_t* temBytePtr = nullptr;
 	uint16_t nStrLen = strIn.length();//返回长度
-	if (nStrLen >= MAX_STR_LEN)
+	if (nStrLen >= maxByteLen)
 	{
-		temBytePtr = pByteTrans;
-		pByteTrans = new uint8_t[nStrLen + 1];
+		maxByteLen = nStrLen + 1;
+		delete[] pByteTrans;
+		pByteTrans = new uint8_t[maxByteLen];
 	}
 
 	pByteTrans[nStrLen] = GetTransFlag();//用于异或运算的一个字节
 	byteTranslate((const uint8_t*)strIn.c_str(), nStrLen, pByteTrans[nStrLen], pByteTrans);
 
-	std::stringstream ss;
+	ss.str("");
+	ss.clear();
 	for (int i = 0; i <= nStrLen; ++i)
 	{
 		ss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << (int)pByteTrans[i];
 	}
 	strOut = ss.str();
 
-	if (temBytePtr != nullptr)
-	{
-		delete pByteTrans;
-		pByteTrans = temBytePtr;
-		temBytePtr = nullptr;
-	}
 	return true;
 }
 
 bool MmrCommon::codeToString(const std::string strIn, std::string& strOut)
 {
-	static uint8_t* pByteTrans = new uint8_t[MAX_STR_LEN];
+	static uint32_t maxByteLen = MAX_STR_LEN;
+	static uint8_t* pByteTrans = new uint8_t[maxByteLen];
 
 	if (strIn.empty())
 	{
 		return false;
 	}
 
-	uint8_t* temBytePtr = nullptr;
 	uint16_t nStrLen = strIn.length() / 2;//返回长度
-	if (nStrLen > MAX_STR_LEN)
+	if (nStrLen > maxByteLen)
 	{
-		temBytePtr = pByteTrans;
-		pByteTrans = new uint8_t[nStrLen];
+		maxByteLen = nStrLen;
+		delete[] pByteTrans;
+		pByteTrans = new uint8_t[maxByteLen];
 	}
 
 	//将字符串转换为字节
@@ -190,12 +188,6 @@ bool MmrCommon::codeToString(const std::string strIn, std::string& strOut)
 	char* pDesStr = const_cast<char*>(strOut.c_str());
 	byteTranslate(pByteTrans, nStrLen - 1, pByteTrans[nStrLen - 1], (uint8_t*)pDesStr);
 
-	if (temBytePtr != nullptr)
-	{
-		delete pByteTrans;
-		pByteTrans = temBytePtr;
-		temBytePtr = nullptr;
-	}
 	return true;
 }
 

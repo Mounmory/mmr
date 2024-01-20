@@ -5,14 +5,30 @@ project(Mounmory)
 #工程放设置到文件夹中
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+set(THIRD_PART_DIR "" CACHE PATH "set third part depend directory")
+
+if(NOT THIRD_PART_DIR)
+	message(FATAL_ERROR "please set THIRD_PART_DIR value!")
+endif()
+
 if(WIN32)
-STRING(REPLACE "-O2" "-Od" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})#取消优化
-message("platform windows")
+	STRING(REPLACE "-O2" "-Od" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})#取消优化
+	if(MSVC)
+		if(MSVC_VERSION LESS 1900) # 判断编译器版本是否低于VS2015
+			message(FATAL_ERROR "MSVC version must be at least 14.0 (Visual Studio 2015)!")
+		endif()
+	endif()
+	include_directories(${THIRD_PART_DIR}/win64/include)
+	link_directories(${THIRD_PART_DIR}/win64/lib)
+	message("platform windows")
 else(UNIX)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_PREFIX_PATH "/opt/Qt5.12.0/5.12.0/gcc_64/" CACHE PATH "set Qt GCC path")
-set(CMAKE_INSTALL_RPATH ./ ${CMAKE_PREFIX_PATH}/lib)#设置运行依赖库目录
-message("platform linux")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")#c++11 do not has make_unique
+	set(CMAKE_PREFIX_PATH "/opt/Qt5.12.0/5.12.0/gcc_64/" CACHE PATH "set Qt GCC path")
+	set(CMAKE_INSTALL_RPATH ./ ${CMAKE_PREFIX_PATH}/lib)#设置运行依赖库目录
+	
+		include_directories(${THIRD_PART_DIR}/linux/include)
+	link_directories(${THIRD_PART_DIR}/linux/lib)
+	message("platform linux")
 endif()
 
 #包含目录
