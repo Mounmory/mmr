@@ -1,0 +1,18 @@
+https://blog.csdn.net/lx7820336/article/details/123060921
+
+1.复制sqlite-autoconf-3370200.tar.gz到Ubuntu下
+
+2.打开终端执行 tar -zxvf sqlite-autoconf-3370200.tar.gz解压源代码（Ubuntu使用root登录）
+
+3.解压完成后进入目录
+
+4.执行mkdir /root/buildSQLite创建用于存放编译文件的目录
+
+5.执行./configure --prefix=/root/buildSQLite将输出目录设置为刚才新建的buildSQLite文件夹
+
+6.执行make -j8 开始8个线程进行编译
+
+7.等待编译完成后执行make install安装sqlite3至系统
+
+
+

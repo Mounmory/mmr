@@ -18,16 +18,16 @@ if(WIN32)
 			message(FATAL_ERROR "MSVC version must be at least 14.0 (Visual Studio 2015)!")
 		endif()
 	endif()
-	include_directories(${THIRD_PART_DIR}/win64/include)
-	link_directories(${THIRD_PART_DIR}/win64/lib)
+
+	link_directories(${THIRD_PART_DIR}/lib/win64)
 	message("platform windows")
 else(UNIX)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")#c++11 do not has make_unique
-	set(CMAKE_PREFIX_PATH "/opt/Qt5.12.0/5.12.0/gcc_64/" CACHE PATH "set Qt GCC path")
+	set(CMAKE_PREFIX_PATH "/opt/Qt5.12.0/5.12.0/gcc_64/" CACHE PATH "set path for find packet, multiple paths using ';' segmentation")
 	set(CMAKE_INSTALL_RPATH ./ ${CMAKE_PREFIX_PATH}/lib)#设置运行依赖库目录
 	
-		include_directories(${THIRD_PART_DIR}/linux/include)
-	link_directories(${THIRD_PART_DIR}/linux/lib)
+	#link_directories(${THIRD_PART_DIR}/lib/linux)#提前安装到系统
+	#link_directories(${THIRD_PART_DIR}/bin/linux)
 	message("platform linux")
 endif()
 
@@ -43,6 +43,8 @@ include(MacroUtil)
 include(MacroBuildSharedLib)
 include(MacroBuildToolPlugin)
 include(MacroBuildTestApp)
+
+include_directories(${THIRD_PART_DIR}/include)
 
 #输出可执行文件目录
 #SET(TARGET_BIN_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")

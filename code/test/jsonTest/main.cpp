@@ -83,6 +83,7 @@ int main()
 	if (output.is_open())
 	{
 		output << Obj << std::endl;
+		output.close();
 	}
 
 	std::cout << "输入任意字符继续..." << std::endl;

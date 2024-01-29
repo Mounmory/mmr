@@ -36,6 +36,7 @@ static std::string _CutParenthesesNTail(std::string&& prettyFuncon)
 #include <iomanip>
 
 #define PRINT_LOG(log) \
+	{\
 	auto now = std::chrono::system_clock::now(); \
 	auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;\
 	std::time_t current_time = std::chrono::system_clock::to_time_t(now);\
@@ -44,6 +45,7 @@ static std::string _CutParenthesesNTail(std::string&& prettyFuncon)
 	<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2)<< time_info->tm_mday\
 	<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"\
 	<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms\
-	<< log << std::endl;
+	<< log << std::endl;\
+	}
 
 #endif

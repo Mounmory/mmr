@@ -100,7 +100,7 @@ bool MmrCommon::localStringToUtf8(const std::string& strIn, std::string& strOut)
 }
 
 
-#define MAX_STR_LEN 10
+#define MAX_STR_LEN 1024
 
 static uint8_t GetTransFlag() //生成随机8位二进制字节
 {
@@ -195,10 +195,19 @@ COMMON_FUN_API bool MmrCommon::GetAppPathAndName(std::string& filePath, std::str
 {
 #ifdef OS_WIN
 	char path[MAX_STR_LEN];
-	GetModuleFileName(NULL, path, MAX_STR_LEN);
+	auto pathLen = GetModuleFileName(NULL, path, MAX_STR_LEN);
+	if (pathLen > MAX_STR_LEN)
+	{
+		std::cerr << "funciton MmrCommon::GetAppPathAndName path len[" << pathLen << "] is longer than max string leng " << std::endl;
+	}
 	filePath = path;
 
-	int pos = filePath.rfind('\\');
+	auto pos = filePath.rfind('.');
+	if (pos != std::string::npos) 
+	{
+		filePath.erase(filePath.begin() + pos, filePath.end());
+	}
+	pos = filePath.rfind('\\');
 	if (pos != std::string::npos)
 	{
 		exeName = &filePath.c_str()[pos + 1];

@@ -1,7 +1,8 @@
 ﻿#include "Common.h"
 #include "util/CDataStream.h"
+#include "sqlite3/sqlite3.h"
 #include <iostream>
-#include <sqlite3.h>
+
 
 // 回调函数，用于SELECT语句
 int callback(void* data, int argc, char** argv, char** azColName) {

@@ -113,10 +113,11 @@ void CDataStream::SetStream(const char* buffer, size_t length, emEndian stream)
 
    // take ownership of the data
    // copy the data, expensive!
-   for(unsigned int i=0; i<length; ++i)
-   {
-      _buffer[i] = buffer[i];
-   }
+   //for(unsigned int i=0; i<length; ++i)
+   //{
+   //   _buffer[i] = buffer[i];
+   //}
+   memcpy(&_buffer[0], buffer, length);
 }
 
 void CDataStream::DoFlip(char* buf, size_t bufsize)
