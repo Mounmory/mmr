@@ -1,6 +1,6 @@
 ﻿#ifndef UTILFUNC_H
 #define UTILFUNC_H
-#include "Common.h"
+#include "Common_def.h"
 #include "util/UtilCommon.h"
 #include <string>
 #include <string.h>

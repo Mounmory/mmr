@@ -1,7 +1,7 @@
 ﻿#ifndef TOOLTEST_H
 #define TOOLTEST_H
 
-#include "Common.h"
+#include "Common_def.h"
 #include "PluginCommon.h"
 #include "interface/IToolTest.h"
 

@@ -1,4 +1,4 @@
-﻿#include "Common.h"
+﻿#include "Common_def.h"
 
 #include <iostream>
 #include "RaffleActivity.h"

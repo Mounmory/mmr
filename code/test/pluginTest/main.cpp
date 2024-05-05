@@ -1,7 +1,7 @@
-﻿#include "Common.h"
+﻿#include "Common_def.h"
 
 #include <iostream>
-#include "Common.h"
+#include "Common_def.h"
 #include "interface/IToolBase.hpp"
 #include "interface/IToolTest.h"
 #include "util/UtilFunc.h"

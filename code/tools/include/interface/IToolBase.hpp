@@ -1,6 +1,6 @@
 #ifndef ITOOLBASE_H
 #define ITOOLBASE_H
-#include "Common.h"
+#include "Common_def.h"
 #include <string>
 
 BEGINE_NAMESPACE(MmrTools)

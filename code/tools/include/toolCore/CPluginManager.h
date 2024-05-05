@@ -1,6 +1,6 @@
 ﻿#ifndef CPLUGINMANAGER_H
 #define CPLUGINMANAGER_H
-#include "Common.h"
+#include "Common_def.h"
 #include "CoreCommon.h"
 #include <typeinfo>
 #include <map>

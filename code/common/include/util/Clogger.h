@@ -1,6 +1,6 @@
 ﻿#ifndef CLOGGER_H
 #define CLOGGET_H
-#include "Common.h"
+#include "Common_def.h"
 #include "util/UtilCommon.h"
 #include <mutex>
 #include <fstream>

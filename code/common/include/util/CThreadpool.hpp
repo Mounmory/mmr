@@ -2,7 +2,7 @@
 #ifndef CTHREADPOOL_H_
 #define CTHREADPOOL_H_
 
-#include "Common.h"
+#include "Common_def.h"
 #include "util/UtilCommon.h"
 #include "util/Clogger.h"
 

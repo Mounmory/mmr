@@ -1,7 +1,7 @@
-﻿#include "Common.h"
+﻿#include "Common_def.h"
 
 #include <iostream>
-#include "Common.h"
+#include "Common_def.h"
 #include "util/UtilFunc.h"
 #include "util/CLicenseObj.h"
 #include "malloc.h"

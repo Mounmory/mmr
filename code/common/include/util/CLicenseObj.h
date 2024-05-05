@@ -1,6 +1,6 @@
 ﻿#ifndef CLICENSEOBJ_H
 #define CLICENSEOBJ_H
-#include "Common.h"
+#include "Common_def.h"
 #include "UtilCommon.h"
 #include <fstream>
 #include <string>

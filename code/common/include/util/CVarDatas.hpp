@@ -1,6 +1,6 @@
 #ifndef COMMON_CVARIANT_HPP
 #define COMMON_CVARIANT_HPP
-#include "Common.h"
+#include "Common_def.h"
 #include <iostream>
 #include <string>
 #include <map>
@@ -373,6 +373,23 @@ public:
 		m_pMapVars = std::move(rhs.m_pMapVars);
 	}
 
+	CVariant& operator [](std::string strKey) 
+	{
+		return (*m_pMapVars)[strKey];
+	}
+
+	const CVariant& operator [](std::string strKey) const
+	{
+		auto iterVar = (*m_pMapVars).find(strKey);
+		if (iterVar != (*m_pMapVars).end())
+		{
+			return iterVar->second;
+		}
+		else
+		{
+			std::invalid_argument(std::string("invalid key " + strKey).c_str());
+		}
+	}
 private:
 	std::unique_ptr<std::map<std::string, CVariant>> m_pMapVars;//变量数量，不能超过255个
 };

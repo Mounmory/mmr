@@ -6,7 +6,7 @@
 #pragma warning( disable : 4251 )
 #endif
 
-#include "Common.h"
+#include "Common_def.h"
 #include "util/UtilCommon.h"
 
 #include <string>                 // for typedef, member
