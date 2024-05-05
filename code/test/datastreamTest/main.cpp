@@ -3,7 +3,7 @@
 #include <iostream>
 
 
-struct Mydata :public MmrCommon::IDealByStream 
+struct Mydata :public mmrUtil::IDealByStream 
 {
 	Mydata() = default;
 	Mydata(int n, float f) 
@@ -14,13 +14,13 @@ struct Mydata :public MmrCommon::IDealByStream
 	int nValue;
 	float fValue;
 
-	virtual void marshal(MmrCommon::CDataStream& dataStream) const override 
+	virtual void marshal(mmrUtil::CDataStream& dataStream) const override 
 	{
 		dataStream << nValue;
 		dataStream << fValue;
 	}
 
-	virtual void unmarshal(MmrCommon::CDataStream& dataStream) override 
+	virtual void unmarshal(mmrUtil::CDataStream& dataStream) override 
 	{
 		dataStream >> nValue;
 		dataStream >> fValue;
@@ -33,7 +33,7 @@ struct Mydata :public MmrCommon::IDealByStream
 
 int main()
 {
-	MmrCommon::CDataStream dataMarshal(MmrCommon::emEndian::BIG);
+	mmrUtil::CDataStream dataMarshal(mmrUtil::emEndian::BIG);
 
 	{
 		Mydata dataTest = { 5,2.5 };
@@ -46,7 +46,7 @@ int main()
 	int byteLen = dataMarshal.size();
 	memcpy(transData, &dataMarshal[0], byteLen);
 
-	MmrCommon::CDataStream dataUnmarshal(transData, byteLen, MmrCommon::emEndian::BIG);
+	mmrUtil::CDataStream dataUnmarshal(transData, byteLen, mmrUtil::emEndian::BIG);
 	{
 		Mydata dataTrans;
 		dataTrans.unmarshal(dataUnmarshal);

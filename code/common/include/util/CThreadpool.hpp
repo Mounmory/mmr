@@ -18,7 +18,7 @@
 #include <thread>
 #include <future>
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 //线程池支持的模式
 enum class PoolMode
@@ -185,8 +185,8 @@ private:
 	std::atomic_bool m_isPoolRunning;
 };
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 
-#define threadPooLIntance MmrCommon::ThreadPool::getThreadPool()
+#define threadPooLIntance mmrUtil::ThreadPool::getThreadPool()
 
 #endif // !THREADPOOL_H_

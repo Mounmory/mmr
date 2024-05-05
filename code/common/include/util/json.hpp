@@ -17,7 +17,7 @@
 #include <ostream>
 #include <iostream>
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 using std::map;
 using std::deque;
@@ -656,7 +656,7 @@ JSON JSON::Load(const string &str) {
 	return std::move(parse_next(str, offset));
 }
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 
 
 

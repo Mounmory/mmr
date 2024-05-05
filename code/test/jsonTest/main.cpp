@@ -5,7 +5,7 @@
 #include <streambuf>
 
 using namespace std;
-using MmrCommon::JSON;
+using mmrUtil::JSON;
 
 #ifdef OS_WIN
 std::string strJsonIn = "D:/VMs/jsonTestIn.json";
@@ -57,11 +57,11 @@ int main()
 	}
 
 	//дJson
-	JSON Obj = MmrCommon::Object();
+	JSON Obj = mmrUtil::Object();
 	Obj["Key1"] = 1.023;
 	Obj["Key2"] = "Value";
 
-	JSON Obj2 = MmrCommon::Object();
+	JSON Obj2 = mmrUtil::Object();
 	Obj2["Key3"] = 1;
 	Obj2["Key4"] = "hello!";
 	Obj2["Key4"] = 3.140909077;

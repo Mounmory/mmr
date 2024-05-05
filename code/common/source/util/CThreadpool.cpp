@@ -3,25 +3,25 @@
 const int TASK_MAX_THRESHHOLD = INT32_MAX;
 const int THREAD_MAX_THRESHHOLD = 1024;
 const int THREAD_MAX_IDLE_TIME = 60;	//单位：秒
-int MmrCommon::Thread::m_generateId = 0;
+int mmrUtil::Thread::m_generateId = 0;
 
 /*
 =========Thread实现=============
 */
-MmrCommon::Thread::Thread(ThreadFunc func)
+mmrUtil::Thread::Thread(ThreadFunc func)
 	:m_func(func)
 	, m_threadId(m_generateId++)
 {
 }
 
-void MmrCommon::Thread::start()
+void mmrUtil::Thread::start()
 {
 	//创建一个线程来执行一个线程函数
 	std::thread t(m_func, m_threadId);
 	t.detach();	//设置守护线程
 }
 
-int MmrCommon::Thread::getId()const
+int mmrUtil::Thread::getId()const
 {
 	return m_threadId;
 }
@@ -38,7 +38,7 @@ if (true == bValue)\
 }
 
 
-MmrCommon::ThreadPool::ThreadPool()
+mmrUtil::ThreadPool::ThreadPool()
 	:m_initThreadSize(std::thread::hardware_concurrency())
 	, m_taskSize(0)
 	, m_idleThreadSize(0)
@@ -50,7 +50,7 @@ MmrCommon::ThreadPool::ThreadPool()
 {
 }
 
-MmrCommon::ThreadPool::~ThreadPool()
+mmrUtil::ThreadPool::~ThreadPool()
 {
 	if (true == m_isPoolRunning)
 	{
@@ -64,26 +64,26 @@ MmrCommon::ThreadPool::~ThreadPool()
 	}
 }
 
-void MmrCommon::ThreadPool::setMode(PoolMode mode)
+void mmrUtil::ThreadPool::setMode(PoolMode mode)
 {
 	IS_TRUE_RETURN(m_isPoolRunning)
 	m_poolMode = mode;
 }
 
-void MmrCommon::ThreadPool::setTaskQueMaxThrshHold(const uint32_t& threshhold)
+void mmrUtil::ThreadPool::setTaskQueMaxThrshHold(const uint32_t& threshhold)
 {
 	IS_TRUE_RETURN(m_isPoolRunning)
 	m_taskqueMaxThresHold = threshhold;
 }
 
-void MmrCommon::ThreadPool::setThreadSizeThreshHold(const uint16_t& threshHold)
+void mmrUtil::ThreadPool::setThreadSizeThreshHold(const uint16_t& threshHold)
 {
 	IS_TRUE_RETURN(m_isPoolRunning)
 	if (m_poolMode == PoolMode::MODE_CACHED)
 		m_threadSizeThreshHold = threshHold;
 }
 
-void MmrCommon::ThreadPool::setThreadSize(const uint16_t& treadSize)
+void mmrUtil::ThreadPool::setThreadSize(const uint16_t& treadSize)
 {
 	IS_TRUE_RETURN(m_isPoolRunning)
 	if (treadSize < 0) 
@@ -95,7 +95,7 @@ void MmrCommon::ThreadPool::setThreadSize(const uint16_t& treadSize)
 	m_curThreadSize = m_initThreadSize;
 }
 
-void MmrCommon::ThreadPool::threadFunc(int threadId)
+void mmrUtil::ThreadPool::threadFunc(int threadId)
 {
 	auto lastTime = std::chrono::high_resolution_clock().now();
 
@@ -186,7 +186,7 @@ void MmrCommon::ThreadPool::threadFunc(int threadId)
 	}
 }
 
-void MmrCommon::ThreadPool::start()
+void mmrUtil::ThreadPool::start()
 {
 	//设置线程池运行状态
 	IS_TRUE_RETURN(m_isPoolRunning)
@@ -207,7 +207,7 @@ void MmrCommon::ThreadPool::start()
 	}
 }
 
-void MmrCommon::ThreadPool::stop()
+void mmrUtil::ThreadPool::stop()
 {
 	m_isPoolRunning = false;
 
@@ -217,12 +217,12 @@ void MmrCommon::ThreadPool::stop()
 	m_exitCond.wait(lock, [&]()->bool {return m_threads.size() == 0; });
 }
 
-bool MmrCommon::ThreadPool::checkRunningState()const
+bool mmrUtil::ThreadPool::checkRunningState()const
 {
 	return m_isPoolRunning;
 }
 
-MmrCommon::ThreadPool* MmrCommon::ThreadPool::getThreadPool()
+mmrUtil::ThreadPool* mmrUtil::ThreadPool::getThreadPool()
 {
 	static ThreadPool* pThreadPool = new ThreadPool();
 	return pThreadPool;

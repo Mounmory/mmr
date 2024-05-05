@@ -1,6 +1,7 @@
 ﻿#include <sstream>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 #include "util/UtilFunc.h"
 
 #ifdef OS_WIN//windows
@@ -12,13 +13,13 @@
 #include <iconv.h>
 #endif
 
-bool MmrCommon::utf8ToLocalString(const std::string& strIn, std::string& strOut)
+bool mmrUtil::utf8ToLocalString(const std::string& strIn, std::string& strOut)
 {
 #ifdef OS_WIN
 	try
 	{
-		static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		static std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> localConverter(new std::codecvt_byname<wchar_t, char, std::mbstate_t >(""));
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> localConverter(new std::codecvt_byname<wchar_t, char, std::mbstate_t >(""));
 		std::wstring wstr = converter.from_bytes(strIn);
 		strOut = localConverter.to_bytes(wstr);
 		return true;
@@ -57,13 +58,13 @@ bool MmrCommon::utf8ToLocalString(const std::string& strIn, std::string& strOut)
 #endif //OS_WIN
 }
 
-bool MmrCommon::localStringToUtf8(const std::string& strIn, std::string& strOut)
+bool mmrUtil::localStringToUtf8(const std::string& strIn, std::string& strOut)
 {
 #ifdef OS_WIN
 	try
 	{
-		static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-		static std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> localConverter(new std::codecvt_byname<wchar_t, char, std::mbstate_t >(""));
+		std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+		std::wstring_convert<std::codecvt_byname<wchar_t, char, std::mbstate_t>> localConverter(new std::codecvt_byname<wchar_t, char, std::mbstate_t >(""));
 		std::wstring wstr = localConverter.from_bytes(strIn);
 		strOut = converter.to_bytes(wstr);
 		return true;
@@ -108,7 +109,7 @@ static uint8_t GetTransFlag() //生成随机8位二进制字节
 }
 
 
-inline void MmrCommon::byteTranslate(const uint8_t* inBuf, const uint16_t nLen, const uint8_t transFlag, uint8_t* outBuf)
+inline void mmrUtil::byteTranslate(const uint8_t* inBuf, const uint16_t nLen, const uint8_t transFlag, uint8_t* outBuf)
 {
 	//解密为原字符
 	for (int i = 0; i < nLen; ++i)
@@ -117,56 +118,38 @@ inline void MmrCommon::byteTranslate(const uint8_t* inBuf, const uint16_t nLen, 
 	}
 }
 
-bool MmrCommon::stringToCode(const std::string strIn, std::string& strOut)
+bool mmrUtil::stringToCode(const std::string strIn, std::string& strOut)
 {
-	static uint32_t maxByteLen = MAX_STR_LEN;
-	static uint8_t* pByteTrans = new uint8_t[maxByteLen];
-	static std::stringstream ss;
-
 	if (strIn.empty())
 	{
 		return false;
 	}
 
+	std::stringstream ss;
 	uint16_t nStrLen = strIn.length();//返回长度
-	if (nStrLen >= maxByteLen)
-	{
-		maxByteLen = nStrLen + 1;
-		delete[] pByteTrans;
-		pByteTrans = new uint8_t[maxByteLen];
-	}
 
-	pByteTrans[nStrLen] = GetTransFlag();//用于异或运算的一个字节
-	byteTranslate((const uint8_t*)strIn.c_str(), nStrLen, pByteTrans[nStrLen], pByteTrans);
+	std::vector<uint8_t> bufTrans(nStrLen + 1, 0);
+	bufTrans[nStrLen] = GetTransFlag();//用于异或运算的一个字节
+	byteTranslate((const uint8_t*)strIn.c_str(), nStrLen, bufTrans[nStrLen], &bufTrans[0]);
 
-	ss.str("");
-	ss.clear();
 	for (int i = 0; i <= nStrLen; ++i)
 	{
-		ss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << (int)pByteTrans[i];
+		ss << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << (int)bufTrans[i];
 	}
 	strOut = ss.str();
 
 	return true;
 }
 
-bool MmrCommon::codeToString(const std::string strIn, std::string& strOut)
+bool mmrUtil::codeToString(const std::string strIn, std::string& strOut)
 {
-	static uint32_t maxByteLen = MAX_STR_LEN;
-	static uint8_t* pByteTrans = new uint8_t[maxByteLen];
-
-	if (strIn.empty())
+	if (strIn.empty() || (strIn.length() % 2))//为空或者为奇数
 	{
 		return false;
 	}
 
 	uint16_t nStrLen = strIn.length() / 2;//返回长度
-	if (nStrLen > maxByteLen)
-	{
-		maxByteLen = nStrLen;
-		delete[] pByteTrans;
-		pByteTrans = new uint8_t[maxByteLen];
-	}
+	std::vector<uint8_t> bufTrans(nStrLen, 0);
 
 	//将字符串转换为字节
 	uint8_t h1, h2;
@@ -181,24 +164,24 @@ bool MmrCommon::codeToString(const std::string strIn, std::string& strOut)
 		s2 = toupper(h2) - 0x30;
 		if (s2 > 9)
 			s2 -= 7;
-		pByteTrans[i] = s1 * 16 + s2;
+		bufTrans[i] = s1 * 16 + s2;
 	}
 
 	strOut.resize(nStrLen - 1);
 	char* pDesStr = const_cast<char*>(strOut.c_str());
-	byteTranslate(pByteTrans, nStrLen - 1, pByteTrans[nStrLen - 1], (uint8_t*)pDesStr);
+	byteTranslate(&bufTrans[0], nStrLen - 1, bufTrans[nStrLen - 1], (uint8_t*)pDesStr);
 
 	return true;
 }
 
-COMMON_FUN_API bool MmrCommon::GetAppPathAndName(std::string& filePath, std::string& exeName)
+COMMON_FUN_API bool mmrUtil::GetAppPathAndName(std::string& filePath, std::string& exeName)
 {
 #ifdef OS_WIN
 	char path[MAX_STR_LEN];
 	auto pathLen = GetModuleFileName(NULL, path, MAX_STR_LEN);
 	if (pathLen > MAX_STR_LEN)
 	{
-		std::cerr << "funciton MmrCommon::GetAppPathAndName path len[" << pathLen << "] is longer than max string leng " << std::endl;
+		std::cerr << "funciton mmrUtil::GetAppPathAndName path len[" << pathLen << "] is longer than max string leng " << std::endl;
 	}
 	filePath = path;
 

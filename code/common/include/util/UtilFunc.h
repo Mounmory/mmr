@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 	//UTF-8转本地字符
 	COMMON_FUN_API bool utf8ToLocalString(const std::string& strIn,std::string& strOut);
@@ -25,5 +25,5 @@ BEGINE_NAMESPACE(MmrCommon)
 
 	COMMON_FUN_API bool GetAppPathAndName(std::string& filePath, std::string& exeName);
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 #endif

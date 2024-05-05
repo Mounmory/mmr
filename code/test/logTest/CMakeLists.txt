@@ -2,5 +2,5 @@
 project(logTest)
 
 build_test_app(logTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

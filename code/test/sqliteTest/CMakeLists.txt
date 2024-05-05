@@ -2,5 +2,5 @@
 project(sqliteTest)
 
 build_test_app(sqliteTest
-	TARGET_LIBRARIES mmrCommon sqlite3
+	TARGET_LIBRARIES mmrUtil sqlite3
 	)

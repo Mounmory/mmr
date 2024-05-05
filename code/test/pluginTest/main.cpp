@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 	auto  plgmng = pluginManager;
 	std::string strAppPath, strAppName;
-	MmrCommon::GetAppPathAndName(strAppPath, strAppName);
+	mmrUtil::GetAppPathAndName(strAppPath, strAppName);
 	//plgmng->loadPuglins(strAppPath);
 	strAppPath += "/plugins";
 	plgmng->loadPuglins(strAppPath);

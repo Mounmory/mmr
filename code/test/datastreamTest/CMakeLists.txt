@@ -2,5 +2,5 @@
 project(datastreamTest)
 
 build_test_app(datastreamTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

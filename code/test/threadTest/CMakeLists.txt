@@ -2,5 +2,5 @@
 project(threadTest)
 
 build_test_app(threadTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

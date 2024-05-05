@@ -2,7 +2,7 @@
 
 #include <iostream>   // for debug output
 
-using namespace MmrCommon;
+using namespace mmrUtil;
 
 CDataStream::CDataStream(emEndian stream)
    : _buffer()

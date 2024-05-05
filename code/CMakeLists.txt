@@ -44,7 +44,15 @@ include(MacroBuildSharedLib)
 include(MacroBuildToolPlugin)
 include(MacroBuildTestApp)
 
+SET(COMMON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/common/include)
+SET(COMMON_INCLUDE_UTIL_DIR ${CMAKE_SOURCE_DIR}/common/include/util)
+SET(COMMON_INCLUDE_LIBNET_DIR ${CMAKE_SOURCE_DIR}/common/include/libnet)
+
 include_directories(${THIRD_PART_DIR}/include)
+include_directories(${COMMON_INCLUDE_DIR})
+#include_directories(${COMMON_INCLUDE_UTIL_DIR})
+#include_directories(${COMMON_INCLUDE_LIBNET_DIR})
+
 
 #输出可执行文件目录
 #SET(TARGET_BIN_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
@@ -57,6 +65,7 @@ if(WIN32)
 	if(BUILD_CREO_LIB)
 		ADD_SUBDIRECTORY(creo)
 	endif(BUILD_CREO_LIB)
+	option(ENABLE_WINDUMP "Windows MiniDumpWriteDump" OFF)
 endif(WIN32)
 
 #构建测试用例

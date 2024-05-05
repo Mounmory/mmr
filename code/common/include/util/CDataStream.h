@@ -14,7 +14,7 @@
 #include <cstdlib>                // for size_t and NULL definition
 #include <cstring>                // for memcpy
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 /// the order of bytes that are on the left
 enum class emEndian //计算机大小端
@@ -157,7 +157,7 @@ public:
 	virtual void unmarshal(CDataStream& dataStream) = 0;//deserialization
 };
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 
 #if _MSC_VER
 #pragma warning( pop ) 

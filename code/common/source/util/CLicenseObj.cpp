@@ -1,7 +1,7 @@
 ﻿#include "util/CLicenseObj.h"
 #include <iostream>
 
-using namespace MmrCommon;
+using namespace mmrUtil;
 
 CLicenseObj::CLicenseObj():
 	m_licState(emLicenseState::LICENSE_NONE)

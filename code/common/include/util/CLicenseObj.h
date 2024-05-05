@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 enum class emLicenseState : uint8_t
 {
@@ -35,6 +35,6 @@ private:
 };
 
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 
 #endif

@@ -2,5 +2,5 @@
 project(strTest)
 
 build_test_app(strTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

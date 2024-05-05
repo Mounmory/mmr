@@ -45,7 +45,7 @@ m_logStream << "[" << std::this_thread::get_id() << "]"\
 << "[" << #logTag << "]" << strBufPtr << std::endl
 
 
-MmrCommon::CLogger::CLogger()
+mmrUtil::CLogger::CLogger()
 	: m_LogLevel(emLogLevel::LOG_DEBUG)
 	, m_lBufLen(1024)
 	, m_lBigBufLen(4096)
@@ -57,20 +57,20 @@ MmrCommon::CLogger::CLogger()
 
 }
 
-MmrCommon::CLogger::~CLogger()
+mmrUtil::CLogger::~CLogger()
 {
 	stop();
 	delete[] m_pBuf;
 	delete[] m_pBigBuf;
 }
 
-MmrCommon::CLogger* MmrCommon::CLogger::getLogger()
+mmrUtil::CLogger* mmrUtil::CLogger::getLogger()
 {
 	static CLogger* loggerInstance = new CLogger;
 	return loggerInstance;
 }
 
-bool MmrCommon::CLogger::setFileMaxNum(uint32_t fileNum)
+bool mmrUtil::CLogger::setFileMaxNum(uint32_t fileNum)
 {
 	if (m_logStream.is_open()) 
 		return false;
@@ -79,7 +79,7 @@ bool MmrCommon::CLogger::setFileMaxNum(uint32_t fileNum)
 	return true;
 }
 
-bool MmrCommon::CLogger::setFileMaxSize(uint64_t fileSize)
+bool mmrUtil::CLogger::setFileMaxSize(uint64_t fileSize)
 {
 	if (m_logStream.is_open())
 		return false;
@@ -88,7 +88,7 @@ bool MmrCommon::CLogger::setFileMaxSize(uint64_t fileSize)
 	return true;
 }
 
-bool MmrCommon::CLogger::setLogLevel(emLogLevel logLevel)
+bool mmrUtil::CLogger::setLogLevel(emLogLevel logLevel)
 {
 	if (m_logStream.is_open())
 		return false;
@@ -97,7 +97,7 @@ bool MmrCommon::CLogger::setLogLevel(emLogLevel logLevel)
 	return true;
 }
 
-bool MmrCommon::CLogger::init(const std::string& strPath, const std::string& strName)
+bool mmrUtil::CLogger::init(const std::string& strPath, const std::string& strName)
 {
 	m_strLogDir = strPath;
 	m_strLogName = strName;
@@ -130,7 +130,7 @@ bool MmrCommon::CLogger::init(const std::string& strPath, const std::string& str
 	return true;
 }
 
-bool MmrCommon::CLogger::start()
+bool mmrUtil::CLogger::start()
 {
 	if (m_strLogDir.empty() || m_strLogName.empty())
 	{
@@ -156,7 +156,7 @@ bool MmrCommon::CLogger::start()
 	return true;
 }
 
-void MmrCommon::CLogger::stop()
+void mmrUtil::CLogger::stop()
 {
 	if (m_logStream.is_open())
 	{
@@ -164,37 +164,37 @@ void MmrCommon::CLogger::stop()
 	}
 }
 
-void MmrCommon::CLogger::LogForce(const char *format, ...)
+void mmrUtil::CLogger::LogForce(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
 }
 
-void MmrCommon::CLogger::LogFatal(const char *format, ...)
+void mmrUtil::CLogger::LogFatal(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_FATAL, F);
 }
 
-void MmrCommon::CLogger::LogError(const char *format, ...)
+void mmrUtil::CLogger::LogError(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_ERROR, E);
 }
 
-void MmrCommon::CLogger::LogWarn(const char *format, ...)
+void mmrUtil::CLogger::LogWarn(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_WARN, W);
 }
 
-void MmrCommon::CLogger::LogInfo(const char *format, ...)
+void mmrUtil::CLogger::LogInfo(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_INFO, I);
 }
 
-void MmrCommon::CLogger::LogDebug(const char *format, ...)
+void mmrUtil::CLogger::LogDebug(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_DEBUG, D);
 }
 
-std::fstream & MmrCommon::CLogger::LogByOstream(const char* logTag /*= ""*/)
+std::fstream & mmrUtil::CLogger::LogByOstream(const char* logTag /*= ""*/)
 {
 	if (LogCheck(emLogLevel::LOG_FORCE))
 	{
@@ -212,7 +212,7 @@ std::fstream & MmrCommon::CLogger::LogByOstream(const char* logTag /*= ""*/)
 	return m_logStream;
 }
 
-bool MmrCommon::CLogger::LogCheck(emLogLevel level)
+bool mmrUtil::CLogger::LogCheck(emLogLevel level)
 {
 	// check log level
 	if (m_LogLevel < level)

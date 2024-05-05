@@ -2,5 +2,5 @@
 project(jsonTest)
 
 build_test_app(jsonTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

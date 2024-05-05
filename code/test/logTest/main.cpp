@@ -2,9 +2,21 @@
 #include "util/Clogger.h"
 #include <iostream>
 
+class CSizeTest 
+{
+public:
+	int a1;
+	//int a2;
+	char b;
+	//char c;
+	//long d;
+};
 
 int main()
 {
+
+	std::cout << "类大小" << sizeof(CSizeTest) << std::endl;
+
 	//logInstancePtr->start();
 
 	for (int i = 0 ; i < 100 ; ++i)

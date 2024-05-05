@@ -6,7 +6,7 @@
 #include <fstream>
 
 
-BEGINE_NAMESPACE(MmrCommon)
+BEGINE_NAMESPACE(mmrUtil)
 
 enum class emLogLevel
 {
@@ -71,9 +71,9 @@ private:
 
 };
 
-END_NAMESPACE(MmrCommon)
+END_NAMESPACE(mmrUtil)
 
-#define logInstancePtr MmrCommon::CLogger::getLogger()
+#define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
    logInstancePtr->LogForce(format, ##__VA_ARGS__)
@@ -97,42 +97,42 @@ END_NAMESPACE(MmrCommon)
 #define LOGFORCE_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_FORCE)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FORCE)\
 		logInstancePtr->LogByOstream("O") << logInfo <<std::endl;\
 }
 
 #define LOGFATAL_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_FATAL)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FATAL)\
 		logInstancePtr->LogByOstream("F") << logInfo <<std::endl;\
 }
 
 #define LOGERROR_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_ERROR)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_ERROR)\
 	logInstancePtr->LogByOstream("E") << logInfo <<std::endl;\
 }
 
 #define LOGWARN_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_WARN)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_WARN)\
 	logInstancePtr->LogByOstream("W") << logInfo <<std::endl;\
 }
 
 #define LOGINFO_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_INFO)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_INFO)\
 	logInstancePtr->LogByOstream("I") << logInfo <<std::endl;\
 }
 
 #define LOGDEBUG_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= MmrCommon::emLogLevel::LOG_DEBUG)\
+	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_DEBUG)\
 		logInstancePtr->LogByOstream("D") << logInfo <<std::endl;\
 }
 #endif

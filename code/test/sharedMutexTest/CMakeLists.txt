@@ -2,5 +2,5 @@
 project(sharedMutexTest)
 
 build_test_app(sharedMutexTest
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)

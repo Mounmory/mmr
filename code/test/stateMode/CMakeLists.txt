@@ -2,5 +2,5 @@
 project(stateMode)
 
 build_test_app(stateMode
-	TARGET_LIBRARIES mmrCommon
+	TARGET_LIBRARIES mmrUtil
 	)
