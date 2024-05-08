@@ -139,10 +139,10 @@ HV_EXPORT void      hv_destroy_default_logger(void);
 #define hlog_get_cur_file()             logger_get_cur_file(hlog)
 
 #define hlogd(fmt, ...) logger_print(hlog, LOG_LEVEL_DEBUG,  "[%s][%s][%d] " fmt, __FILENAME__, __FUNCTION__, __LINE__, ## __VA_ARGS__)
-#define hlogi(fmt, ...) logger_print(hlog, LOG_LEVEL_INFO,  fmt " [%s:%d:%s]", ## __VA_ARGS__, __FILENAME__, __LINE__, __FUNCTION__)
-#define hlogw(fmt, ...) logger_print(hlog, LOG_LEVEL_WARN,  fmt " [%s:%d:%s]", ## __VA_ARGS__, __FILENAME__, __LINE__, __FUNCTION__)
-#define hloge(fmt, ...) logger_print(hlog, LOG_LEVEL_ERROR, fmt " [%s:%d:%s]", ## __VA_ARGS__, __FILENAME__, __LINE__, __FUNCTION__)
-#define hlogf(fmt, ...) logger_print(hlog, LOG_LEVEL_FATAL, fmt " [%s:%d:%s]", ## __VA_ARGS__, __FILENAME__, __LINE__, __FUNCTION__)
+#define hlogi(fmt, ...) logger_print(hlog, LOG_LEVEL_INFO,  "[%s][%s][%d] " fmt, __FILENAME__, __FUNCTION__, __LINE__, ## __VA_ARGS__)
+#define hlogw(fmt, ...) logger_print(hlog, LOG_LEVEL_WARN,  "[%s][%s][%d] " fmt, __FILENAME__, __FUNCTION__, __LINE__, ## __VA_ARGS__)
+#define hloge(fmt, ...) logger_print(hlog, LOG_LEVEL_ERROR,  "[%s][%s][%d] " fmt, __FILENAME__, __FUNCTION__, __LINE__, ## __VA_ARGS__)
+#define hlogf(fmt, ...) logger_print(hlog, LOG_LEVEL_FATAL,  "[%s][%s][%d] " fmt, __FILENAME__, __FUNCTION__, __LINE__, ## __VA_ARGS__)
 
 // below for android
 #if defined(ANDROID) || defined(__ANDROID__)

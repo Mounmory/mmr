@@ -7,7 +7,7 @@
 #endif
 
 #include "Common_def.h"
-#include "util/UtilCommon.h"
+#include "util/UtilExport.h"
 
 #include <string>                 // for typedef, member
 #include <vector>                 // for typedef, member

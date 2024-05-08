@@ -8,13 +8,19 @@ MACRO(build_test_app targetName)
 	MMR #prifix
     "" # no options
     "FOLDER" # one value args
-    "TARGET_LIBRARIES" # multi value args
+    "TARGET_LIBRARIES;TARGET_WIN_LIBS;TARGET_LINUX_LIBS" # multi value args
     ${ARGN}
     )
 	
 	message("build_test_app ${targetName}")
 	
 	include_directories(${CMAKE_SOURCE_DIR}/common/include)
+	
+	include_directories(${CMAKE_SOURCE_DIR}/service)
+	
+	include_directories(${CMAKE_SOURCE_DIR}/service/interface)
+	
+	include_directories(${CMAKE_SOURCE_DIR}/service/interface/iservice)
 	
 	include_directories(${CMAKE_SOURCE_DIR}/tools/include)
 	
@@ -34,8 +40,19 @@ MACRO(build_test_app targetName)
 		${FILE_HEADS}
 		${FILE_SOURCES})
 		
+		#conmmon target link libs 
 	if(MMR_TARGET_LIBRARIES)
 		target_link_libraries(${PROJECT_NAME} ${MMR_TARGET_LIBRARIES})
+	endif()
+	
+	#windows only target link libs
+	if(WIN32 AND MMR_TARGET_WIN_LIBS)
+		target_link_libraries(${PROJECT_NAME} ${MMR_TARGET_WIN_LIBS})
+	endif()
+
+	#linux only target link libs
+	if(UNIX AND MMR_TARGET_LINUX_LIBS)
+		target_link_libraries(${PROJECT_NAME} ${MMR_TARGET_LINUX_LIBS})
 	endif()
 
 #[[

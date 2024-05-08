@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <vector>
+#include <unordered_map>
 
 BEGINE_NAMESPACE(mmrUtil)
 
@@ -15,81 +17,112 @@ public:
 	{
 		VAR_TYPE_INVALID = 0,
 		VAR_TYPE_BOOL,
+		VAR_TYPE_CHAR,
 		VAR_TYPE_INT32,
+		VAR_TYPE_UINT32,
+		VAR_TYPE_INT64,
+		VAR_TYPE_UINT64,
 		VAR_TYPE_FLOAT,
 		VAR_TYPE_DOUBLE,
 		VAR_TYPE_STRING,
-
-		VAR_TYPE_ARR_BOOL,//数组类型，暂不实现
-		VAR_TYPE_ARR_INT32,
-		VAR_TYPE_ARR_FLOAT,
-		VAR_TYPE_ARR_DOUBLE,
-		VAR_TYPE_ARR_STRING
-
+		VAR_TYPE_BYTE_ARRAY
 	};
 
 	CVariant()
-		:type(EM_DataType::VAR_TYPE_INVALID) {
+		:m_type(EM_DataType::VAR_TYPE_INVALID) {
 	}
 
 	CVariant(bool bValue)
-		:type(EM_DataType::VAR_TYPE_BOOL) {
-		data.bValue = bValue;
+		:m_type(EM_DataType::VAR_TYPE_BOOL) {
+		m_data.bValue = bValue;
 	}
 
-	CVariant(int32_t lValue)
-		:type(EM_DataType::VAR_TYPE_INT32) {
-		data.lValue = lValue;
+	CVariant(char cValue) 
+	:m_type(EM_DataType::VAR_TYPE_CHAR){
+		m_data.cValue = cValue;
+	}
+
+	CVariant(int32_t i32Value)
+		:m_type(EM_DataType::VAR_TYPE_INT32) {
+		m_data.i32Value = i32Value;
+	}
+
+	CVariant(uint32_t u32Value)
+		:m_type(EM_DataType::VAR_TYPE_UINT32) {
+		m_data.u32Value = u32Value;
+	}
+
+	CVariant(int64_t i64Value)
+		:m_type(EM_DataType::VAR_TYPE_INT64) {
+		m_data.i64Value = i64Value;
+	}
+
+	CVariant(uint64_t u64Value)
+		:m_type(EM_DataType::VAR_TYPE_UINT64) {
+		m_data.u64Value = u64Value;
 	}
 
 	CVariant(float fValue)
-		:type(EM_DataType::VAR_TYPE_FLOAT) {
-		data.fValue = fValue;
+		:m_type(EM_DataType::VAR_TYPE_FLOAT) {
+		m_data.fValue = fValue;
 	}
 
 	CVariant(double dValue)
-		:type(EM_DataType::VAR_TYPE_DOUBLE) {
-		data.dValue = dValue;
+		:m_type(EM_DataType::VAR_TYPE_DOUBLE) {
+		m_data.dValue = dValue;
 	}
 
 	CVariant(const char* szValue)
-		:type(EM_DataType::VAR_TYPE_STRING) {
-		std::string temStr(szValue);
-		if (temStr.length() < 255)
-		{
-			data.strValue = new std::string(std::move(temStr));
-		}
-		else
-		{
-			data.strValue = new std::string;
-			data.strValue->append(temStr.begin(), temStr.begin() + 255);
-		}
+		:m_type(EM_DataType::VAR_TYPE_STRING) {
+		m_data.strValue = new std::string(szValue);
 	}
 
-	CVariant(const std::string& strValue)
-		:type(EM_DataType::VAR_TYPE_STRING) {
-		if (strValue.length() < 255)
-		{
-			data.strValue = new std::string(strValue);
-		}
-		else
-		{
-			data.strValue = new std::string;
-			data.strValue->append(strValue.begin(), strValue.begin() + 255);
-		}
-			
+	CVariant(std::string strValue)
+		:m_type(EM_DataType::VAR_TYPE_STRING) {
+		m_data.strValue = new std::string(std::move(strValue));
 	}
+
+	CVariant(std::vector<char> byteArrValue)
+		:m_type(EM_DataType::VAR_TYPE_BYTE_ARRAY){
+		m_data.byteArrValue = new std::vector<char>(std::move(byteArrValue));
+	}
+
 
 	CVariant(const CVariant& var)
 	{
 		*this = var;
 	}
 
-	//CVariant(CVariant&& var)
-	//	:type(EM_DataType::VAR_TYPE_INVALID)
-	//{
-	//	*this = std::move(var);
-	//}
+	CVariant(CVariant&& var) 
+		:m_type(std::exchange(var.m_type,EM_DataType::VAR_TYPE_INVALID)){
+		switch (this->m_type)
+		{
+		case EM_DataType::VAR_TYPE_INVALID:
+		case EM_DataType::VAR_TYPE_BOOL:
+		case EM_DataType::VAR_TYPE_CHAR:
+		case EM_DataType::VAR_TYPE_INT32:
+		case EM_DataType::VAR_TYPE_UINT32:
+		case EM_DataType::VAR_TYPE_INT64:
+		case EM_DataType::VAR_TYPE_UINT64:
+		case EM_DataType::VAR_TYPE_FLOAT:
+		case EM_DataType::VAR_TYPE_DOUBLE:
+			this->m_data = var.m_data;
+			break;
+		case EM_DataType::VAR_TYPE_STRING:
+		{
+			m_data.strValue = std::exchange(var.m_data.strValue, nullptr);
+		}
+		break;
+		case EM_DataType::VAR_TYPE_BYTE_ARRAY:
+		{
+			m_data.byteArrValue = std::exchange(var.m_data.byteArrValue, nullptr);
+		}
+		break;
+		default:
+			this->m_type = EM_DataType::VAR_TYPE_INVALID;
+			break;
+		}
+	}
 
 	~CVariant()
 	{
@@ -101,225 +134,256 @@ public:
 		if (this != &var)//避免自赋值
 		{
 			resetCheck();
-			this->type = var.type;
-			switch (type)
+			this->m_type = var.m_type;
+			switch (m_type)
 			{
 			case EM_DataType::VAR_TYPE_INVALID:
 			case EM_DataType::VAR_TYPE_BOOL:
+			case EM_DataType::VAR_TYPE_CHAR:
 			case EM_DataType::VAR_TYPE_INT32:
+			case EM_DataType::VAR_TYPE_UINT32:
+			case EM_DataType::VAR_TYPE_INT64:
+			case EM_DataType::VAR_TYPE_UINT64:
 			case EM_DataType::VAR_TYPE_FLOAT:
 			case EM_DataType::VAR_TYPE_DOUBLE:
-				this->data = var.data;
+				this->m_data = var.m_data;
 				break;
 			case EM_DataType::VAR_TYPE_STRING:
-			{
-				data.strValue = new std::string(*(var.data.strValue));
-			}
+				{
+					m_data.strValue = new std::string(*(var.m_data.strValue));
+				}
+			break;
+			case EM_DataType::VAR_TYPE_BYTE_ARRAY:
+				{
+					m_data.byteArrValue = new std::vector<char>(*(var.m_data.byteArrValue));
+				}
 			break;
 			default:
-				this->type = EM_DataType::VAR_TYPE_INVALID;
+				this->m_type = EM_DataType::VAR_TYPE_INVALID;
 				break;
 			}
 		}
 		return *this;
 	}
 
-	bool operator == (const CVariant& var) 
+	CVariant operator = (CVariant&& var) 
 	{
-		if (this->type != var.type)
+		this->m_type = std::exchange(var.m_type, EM_DataType::VAR_TYPE_INVALID);
+		switch (this->m_type)
 		{
-			return false;
-		}
-		else
-		{
-			switch (type)
-			{
-			case EM_DataType::VAR_TYPE_STRING:
-			{
-				return *(data.strValue) == *(var.data.strValue);
-			}
+		case EM_DataType::VAR_TYPE_INVALID:
+		case EM_DataType::VAR_TYPE_BOOL:
+		case EM_DataType::VAR_TYPE_CHAR:
+		case EM_DataType::VAR_TYPE_INT32:
+		case EM_DataType::VAR_TYPE_UINT32:
+		case EM_DataType::VAR_TYPE_INT64:
+		case EM_DataType::VAR_TYPE_UINT64:
+		case EM_DataType::VAR_TYPE_FLOAT:
+		case EM_DataType::VAR_TYPE_DOUBLE:
+			this->m_data = var.m_data;
 			break;
-			case EM_DataType::VAR_TYPE_INVALID:
-			case EM_DataType::VAR_TYPE_BOOL:
-			case EM_DataType::VAR_TYPE_INT32:
-			case EM_DataType::VAR_TYPE_FLOAT:
-			case EM_DataType::VAR_TYPE_DOUBLE:
-			default:
-				return data.dValue == var.data.dValue;//注意！！！！待验证
-				break;
-			}
-			return false;
+		case EM_DataType::VAR_TYPE_STRING:
+		{
+			m_data.strValue = std::exchange(var.m_data.strValue, nullptr);
+		}
+		break;
+		case EM_DataType::VAR_TYPE_BYTE_ARRAY:
+		{
+			m_data.byteArrValue = std::exchange(var.m_data.byteArrValue, nullptr);
+		}
+		break;
+		default:
+			this->m_type = EM_DataType::VAR_TYPE_INVALID;
+			break;
 		}
 	}
-
-	//CVariant operator = (CVariant&& var) 
-	//{
-	//	type = svar.type;
-	//	svar.type = EM_DataType::VAR_TYPE_INVALID);
-	//	data = var.data;
-	//}
 
 	//设置数据
 	void setBoolData(bool bValue)
 	{
 		resetCheck();
-		type = EM_DataType::VAR_TYPE_BOOL;
-		data.bValue = bValue;
+		m_type = EM_DataType::VAR_TYPE_BOOL;
+		m_data.bValue = bValue;
 	}
 
-	void setInt32Data(int32_t lValue)
+	void setCharData(char cValue)
 	{
 		resetCheck();
-		type = EM_DataType::VAR_TYPE_INT32;
-		data.lValue = lValue;
+		m_type = EM_DataType::VAR_TYPE_CHAR;
+		m_data.cValue = cValue;
+	}
+
+	void setInt32Data(int32_t i32Value)
+	{
+		resetCheck();
+		m_type = EM_DataType::VAR_TYPE_INT32;
+		m_data.i32Value = i32Value;
+	}
+
+	void setUint32Data(uint32_t u32Value)
+	{
+		resetCheck();
+		m_type = EM_DataType::VAR_TYPE_UINT32;
+		m_data.u32Value = u32Value;
+	}
+
+	void setInt64Data(int64_t i64Value)
+	{
+		resetCheck();
+		m_type = EM_DataType::VAR_TYPE_INT64;
+		m_data.i64Value = i64Value;
+	}
+
+	void setUint64Data(uint64_t u64Value)
+	{
+		resetCheck();
+		m_type = EM_DataType::VAR_TYPE_UINT64;
+		m_data.u64Value = u64Value;
 	}
 
 	void setFloatData(float fValue)
 	{
 		resetCheck();
-		type = EM_DataType::VAR_TYPE_FLOAT;
-		data.fValue = fValue;
+		m_type = EM_DataType::VAR_TYPE_FLOAT;
+		m_data.fValue = fValue;
 	}
 
 	void setDoubleData(double dValue)
 	{
 		resetCheck();
-		type = EM_DataType::VAR_TYPE_DOUBLE;
-		data.dValue = dValue;
+		m_type = EM_DataType::VAR_TYPE_DOUBLE;
+		m_data.dValue = dValue;
 	}
 
-	void setStringData(const std::string& strValue)
+	void setStringData(std::string strValue)
 	{
 		resetCheck();
-		type = EM_DataType::VAR_TYPE_STRING;
-		if (strValue.length() < 255)
-		{
-			data.strValue = new std::string(strValue);
-		}
-		else
-		{
-			data.strValue = new std::string;
-			data.strValue->append(strValue.begin(), strValue.begin() + 255);
-		}
+		m_type = EM_DataType::VAR_TYPE_STRING;
+		m_data.strValue = new std::string(std::move(strValue));
+	}
+
+	void setByteArrayData(std::vector<char> arrValue)
+	{
+		resetCheck();
+		m_type = EM_DataType::VAR_TYPE_BYTE_ARRAY;
+		m_data.byteArrValue = new std::vector<char>(std::move(arrValue));
 	}
 
 	//获取数据
-	bool getBoolData(bool& bValue) const
+	const bool getBoolData() const
 	{
-		if (EM_DataType::VAR_TYPE_BOOL != type)
-			return false;
-		bValue = data.bValue;
-		return true;
-	}
-
-	bool getInt32Data(int32_t& lValue) const
-	{
-		if (EM_DataType::VAR_TYPE_INT32 != type)
-			return false;
-		lValue = data.lValue;
-		return true;
-	}
-
-	bool getFloatData(float& fValue) const
-	{
-		if (EM_DataType::VAR_TYPE_FLOAT != type)
-			return false;
-		fValue = data.fValue;
-		return true;
-	}
-
-	bool getDoubleData(double& dValue) const
-	{
-		if (EM_DataType::VAR_TYPE_DOUBLE != type)
-			return false;
-		dValue = data.dValue;
-		return true;
-	}
-
-	bool getStringData(std::string& strValue) const
-	{
-		if (EM_DataType::VAR_TYPE_STRING != type)
-			return false;
-		strValue = *(data.strValue);
-		return true;
-	}
-
-	//第二种get,赋值给引用有风险！！！！
-	const bool& getBoolData() const
-	{
-		if (EM_DataType::VAR_TYPE_BOOL != type) 
+		if (EM_DataType::VAR_TYPE_BOOL != m_type) 
 		{
-			static bool bTem = false;
-			return bTem;
+			throw std::logic_error("variant m_type is not bool!");
 		}
-		return data.bValue;
+		return m_data.bValue;
 	}
 
-	const int32_t& getInt32Data() const
+	const char getCharData() const
 	{
-		if (EM_DataType::VAR_TYPE_INT32 != type) 
+		if (EM_DataType::VAR_TYPE_CHAR != m_type)
 		{
-			static int32_t lTem = 0;
-			return lTem;
+			throw std::logic_error("variant m_type is not char!");
 		}
-		return data.lValue;
+		return m_data.cValue;
 	}
 
-	const float& getFloatData() const
+	const int32_t getInt32Data() const
 	{
-		if (EM_DataType::VAR_TYPE_FLOAT != type) 
+		if (EM_DataType::VAR_TYPE_INT32 != m_type) 
 		{
-			static float fTem = 0.0;
-			return fTem;
+			throw std::logic_error("variant m_type is not int32!");
 		}
-		return data.fValue;
+		return m_data.i32Value;
 	}
 
-	const double& getDoubleData() const
+	const uint32_t getUint32Data() const
 	{
-		if (EM_DataType::VAR_TYPE_DOUBLE != type)
+		if (EM_DataType::VAR_TYPE_UINT32 != m_type)
 		{
-			static double dTem = 0.0;
-			return dTem;
+			throw std::logic_error("variant m_type is not uint32!");
 		}
-		return data.dValue;
+		return m_data.u32Value;
+	}
+
+	const int64_t getInt64Data() const
+	{
+		if (EM_DataType::VAR_TYPE_INT64 != m_type)
+		{
+			throw std::logic_error("variant m_type is not int64!");
+		}
+		return m_data.i64Value;
+	}
+
+	const uint64_t getUint64Data() const
+	{
+		if (EM_DataType::VAR_TYPE_UINT64 != m_type)
+		{
+			throw std::logic_error("variant m_type is not uint64!");
+		}
+		return m_data.u64Value;
+	}
+
+	const float getFloatData() const
+	{
+		if (EM_DataType::VAR_TYPE_FLOAT != m_type) 
+		{
+			throw std::logic_error("variant m_type is not float!");
+		}
+		return m_data.fValue;
+	}
+
+	const double getDoubleData() const
+	{
+		if (EM_DataType::VAR_TYPE_DOUBLE != m_type)
+		{
+			throw std::logic_error("variant m_type is not double!");
+		}
+		return m_data.dValue;
 	}
 
 	const std::string& getStringData() const
 	{
-		if (EM_DataType::VAR_TYPE_STRING != type) 
+		if (EM_DataType::VAR_TYPE_STRING != m_type) 
 		{
-			static std::string retStr = "";
-			return retStr;
+			throw std::logic_error("variant m_type is not string!");
 		}
-		else
-		{
-			return *(data.strValue);
-		}
+		return *(m_data.strValue);
 	}
 
-	EM_DataType getType() { return type; }
+	const std::vector<char>& getByteArrayData() const
+	{
+		if (EM_DataType::VAR_TYPE_BYTE_ARRAY != m_type)
+		{
+			throw std::logic_error("variant m_type is not array!");
+		}
+		return *(m_data.byteArrValue);
+	}
 
-	const EM_DataType getType() const { return type; }
+	EM_DataType getType() { return m_type; }
+
+	const EM_DataType getType() const { return m_type; }
 private:
 	void resetCheck()
 	{
-		switch (type)
+		switch (m_type)
 		{
-		case EM_DataType::VAR_TYPE_INVALID:
-		case EM_DataType::VAR_TYPE_BOOL:
-		case EM_DataType::VAR_TYPE_INT32:
-		case EM_DataType::VAR_TYPE_FLOAT:
-		case EM_DataType::VAR_TYPE_DOUBLE:
-			break;
 		case EM_DataType::VAR_TYPE_STRING:
 		{
-			delete data.strValue;
+			delete m_data.strValue;
+			m_data.strValue = nullptr;
+		}
+		break;
+		case EM_DataType::VAR_TYPE_BYTE_ARRAY:
+		{
+			delete m_data.byteArrValue;
+			m_data.byteArrValue = nullptr;
 		}
 		break;
 		default:
 			break;
 		}
+		//m_type = EM_DataType::VAR_TYPE_INVALID;
 	}
 
 private:
@@ -327,31 +391,33 @@ private:
 	{
 		//void* vPtr;
 		bool bValue;
-		int32_t lValue;
+		char cValue;
+		int32_t i32Value;
+		uint32_t u32Value;
+		int64_t i64Value;
+		uint64_t u64Value;
 		float fValue;
 		double dValue;
 		std::string* strValue;
+		std::vector<char>* byteArrValue;
 	};
 
-	EM_DataType type = EM_DataType::VAR_TYPE_INVALID;
-	unData data;
+	EM_DataType m_type = EM_DataType::VAR_TYPE_INVALID;
+	unData m_data;
 };
 
 //数据解析类
 class CVarDatas
 {
-	//要不要考虑大小端问题？？
-	//目前最多支持256个参数
-	//改成vector<char>防止内存泄漏
-	//string参数长度目前不能超过256字节
+	using MapVars = std::unordered_map<std::string, CVariant>;
 public:
 	CVarDatas()	
-		:m_pMapVars(std::unique_ptr<std::map<std::string, CVariant>>(new std::map<std::string, CVariant>))
+		:m_pMapVars(std::unique_ptr<MapVars>(new MapVars))
 	{
 	}
 
 	CVarDatas(const CVarDatas& rhs)
-		:m_pMapVars(std::unique_ptr<std::map<std::string, CVariant>>(new std::map<std::string, CVariant>((*rhs.m_pMapVars.get()))))
+		:m_pMapVars(std::unique_ptr<MapVars>(new MapVars((*rhs.m_pMapVars))))
 	{
 	}
 
@@ -360,12 +426,11 @@ public:
 	{
 	}
 
-
 	~CVarDatas() = default;
 
 	CVarDatas& operator = (const CVarDatas& rhs) 
 	{
-		m_pMapVars = std::unique_ptr<std::map<std::string, CVariant>>(new std::map<std::string, CVariant>((*rhs.m_pMapVars.get())));
+		*m_pMapVars = *rhs.m_pMapVars;
 	}
 
 	CVarDatas& operator = (CVarDatas&& rhs)
@@ -373,25 +438,42 @@ public:
 		m_pMapVars = std::move(rhs.m_pMapVars);
 	}
 
-	CVariant& operator [](std::string strKey) 
+	bool isContain(std::string strKey) 
 	{
-		return (*m_pMapVars)[strKey];
+		return m_pMapVars->count(strKey) != 0;
 	}
 
-	const CVariant& operator [](std::string strKey) const
+	std::vector<std::string> getAllKey() 
 	{
-		auto iterVar = (*m_pMapVars).find(strKey);
-		if (iterVar != (*m_pMapVars).end())
+		std::vector<std::string> vecStr;
+		if (vecStr.capacity() < m_pMapVars->size())
 		{
-			return iterVar->second;
+			vecStr.reserve(m_pMapVars->size());
 		}
-		else
+
+		for (const auto& iter : (*m_pMapVars))
 		{
-			std::invalid_argument(std::string("invalid key " + strKey).c_str());
+			vecStr.emplace_back(iter.first);
 		}
+		return vecStr;
+	}
+
+	void addVar(std::string strKey, CVariant var) 
+	{
+		m_pMapVars->insert(std::make_pair(std::move(strKey), var));
+	}
+
+	const CVariant& getVar(std::string&& strKey) const
+	{
+		auto iterVar = m_pMapVars->find(strKey);
+		if (iterVar == m_pMapVars->end())
+		{
+			throw std::invalid_argument(std::string("invalid key " + strKey).c_str());
+		}
+		return iterVar->second;
 	}
 private:
-	std::unique_ptr<std::map<std::string, CVariant>> m_pMapVars;//变量数量，不能超过255个
+	std::unique_ptr<MapVars> m_pMapVars;
 };
 
 

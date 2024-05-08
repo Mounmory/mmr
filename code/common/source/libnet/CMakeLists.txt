@@ -69,7 +69,7 @@ source_group("source/ssl" FILES ${NET_SSL_SOURCE})
 
 build_shared_library( mmrNet
 	#project folder in VS
-	FOLDER Common
+	FOLDER common
 	#源文件
 	SRC_FILES ${NET_BASE_HEADS} ${NET_BASE_SOURCE} 
 		${NET_CPPNET_HEADS} ${NET_CPPNET_SOURCE}

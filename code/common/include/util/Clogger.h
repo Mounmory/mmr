@@ -1,7 +1,7 @@
 ﻿#ifndef CLOGGER_H
 #define CLOGGET_H
 #include "Common_def.h"
-#include "util/UtilCommon.h"
+#include "util/UtilExport.h"
 #include <mutex>
 #include <fstream>
 
@@ -76,63 +76,63 @@ END_NAMESPACE(mmrUtil)
 #define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
-   logInstancePtr->LogForce(format, ##__VA_ARGS__)
+   logInstancePtr->LogForce("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
-   logInstancePtr->LogFatal(format, ##__VA_ARGS__)
+   logInstancePtr->LogFatal("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-   logInstancePtr->LogError(format, ##__VA_ARGS__)
+   logInstancePtr->LogError("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_WARN(format, ...) \
-   logInstancePtr->LogWarn(format, ##__VA_ARGS__)
+   logInstancePtr->LogWarn("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-   logInstancePtr->LogInfo(format, ##__VA_ARGS__)
+   logInstancePtr->LogInfo("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_DEBUG(format, ...) \
-   logInstancePtr->LogDebug(format, ##__VA_ARGS__)
+   logInstancePtr->LogDebug("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 //直接使用文件流输出
 #define LOGFORCE_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FORCE)\
-		logInstancePtr->LogByOstream("O") << logInfo <<std::endl;\
+		logInstancePtr->LogByOstream("O") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 
 #define LOGFATAL_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FATAL)\
-		logInstancePtr->LogByOstream("F") << logInfo <<std::endl;\
+		logInstancePtr->LogByOstream("F") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 
 #define LOGERROR_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_ERROR)\
-	logInstancePtr->LogByOstream("E") << logInfo <<std::endl;\
+	logInstancePtr->LogByOstream("E") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 
 #define LOGWARN_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_WARN)\
-	logInstancePtr->LogByOstream("W") << logInfo <<std::endl;\
+	logInstancePtr->LogByOstream("W") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 
 #define LOGINFO_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_INFO)\
-	logInstancePtr->LogByOstream("I") << logInfo <<std::endl;\
+	logInstancePtr->LogByOstream("I") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 
 #define LOGDEBUG_BYSTREAM(logInfo)\
 {\
 	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
 	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_DEBUG)\
-		logInstancePtr->LogByOstream("D") << logInfo <<std::endl;\
+		logInstancePtr->LogByOstream("D") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
 }
 #endif

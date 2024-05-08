@@ -1,7 +1,9 @@
 ﻿#ifndef UTILCOMMON_H
 #define UTILCOMMON_H
 
-#if defined(_MSC_VER) || defined(__CYGWIN__) || defined(__MINGW32__) || defined( __BCPLUSPLUS__)  || defined( __MWERKS__)
+#include "Common_def.h"
+
+#if defined(OS_WIN)
 		//#pragma execution_character_set("utf-8")
 	#ifdef MMR_COMMON_EXPORT
 		#define COMMON_CLASS_API __declspec(dllexport)

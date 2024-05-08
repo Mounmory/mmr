@@ -43,6 +43,7 @@ include(MacroUtil)
 include(MacroBuildSharedLib)
 include(MacroBuildToolPlugin)
 include(MacroBuildTestApp)
+include(MacroBuildComponent)
 
 SET(COMMON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/common/include)
 SET(COMMON_INCLUDE_UTIL_DIR ${CMAKE_SOURCE_DIR}/common/include/util)
@@ -57,7 +58,9 @@ include_directories(${COMMON_INCLUDE_DIR})
 #输出可执行文件目录
 #SET(TARGET_BIN_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
 
+ADD_SUBDIRECTORY(app)
 ADD_SUBDIRECTORY(common)
+ADD_SUBDIRECTORY(service)
 ADD_SUBDIRECTORY(tools)
 
 if(WIN32)

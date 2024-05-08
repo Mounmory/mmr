@@ -17,12 +17,12 @@ int main()
 
 	std::cout << "类大小" << sizeof(CSizeTest) << std::endl;
 
-	//logInstancePtr->start();
+	logInstancePtr->start();
 
 	for (int i = 0 ; i < 100 ; ++i)
 	{
 		logInstancePtr->LogForce("[%s][%d] log test i value is %lld!", __FUNCTION__, __LINE__, i);
-		LOG_INFO("[%s][%d] log test i value is %lld!", __FUNCTION__, __LINE__, i);
+		LOG_INFO("log test i value is %lld!", i);
 		LOGWARN_BYSTREAM("log test i value is " << i);
 		std::cout << "log test i value is " << i << std::endl;
 	}

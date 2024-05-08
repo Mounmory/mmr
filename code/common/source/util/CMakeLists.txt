@@ -22,20 +22,9 @@ add_definitions(-DMMR_COMMON_EXPORT)
 
 build_shared_library( mmrUtil
 	#project folder in VS
-	FOLDER Common
+	FOLDER common
 	#源文件
 	SRC_FILES ${COMMON_HEADS} ${COMMON_SOURCE} ${FILE_HEADS} ${FILE_SOURCES}
 	TARGET_LINUX_LIBS pthread #threadPool in linux OS link library
 	)
 	
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/common/include/
-	DESTINATION include/common)
-	
-
-if(WIN32)
-	INSTALL(FILES ${THIRD_PART_DIR}/bin/win64/sqlite3.dll 
-		DESTINATION bin)
-else(UNIX)#linux直接将源码安装到系统
-	#INSTALL(FILES ${THIRD_PART_DIR}/linux/bin/libsqlite3.so
-	#	DESTINATION bin)
-endif()

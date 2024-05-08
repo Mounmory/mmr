@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 	if (argc < 2) 
 	{
 		port = 2347;
-		printf("Usage: %s  defalt port %ld\n", argv[0], port);
+		printf("Usage: %s  defalt port %d\n", argv[0], port);
 	}
 	else 
 	{

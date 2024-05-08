@@ -3,7 +3,7 @@
 #define CTHREADPOOL_H_
 
 #include "Common_def.h"
-#include "util/UtilCommon.h"
+#include "util/UtilExport.h"
 #include "util/Clogger.h"
 
 #include <iostream>
