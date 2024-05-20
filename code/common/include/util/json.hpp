@@ -16,12 +16,15 @@
 #include <initializer_list>
 #include <ostream>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
-BEGINE_NAMESPACE(mmrUtil)
+BEGINE_NAMESPACE(Json)
 
 using std::map;
 using std::deque;
 using std::string;
+using std::ifstream;
 using std::enable_if;
 using std::initializer_list;
 using std::is_same;
@@ -48,7 +51,7 @@ namespace {
 	}
 }
 
-class JSON
+class Value
 {
 	union BackingData {
 		BackingData(double d) : Float(d) {}
@@ -57,8 +60,8 @@ class JSON
 		BackingData(string s) : String(new string(std::move(s))) {}
 		BackingData() : Int(0) {}
 
-		deque<JSON>        *List;
-		map<string, JSON>   *Map;
+		deque<Value>        *List;
+		map<string, Value>   *Map;
 		string             *String;
 		double              Float;
 		long                Int;
@@ -104,24 +107,24 @@ public:
 		typename Container::const_iterator end() const { return object ? object->end() : typename Container::const_iterator(); }
 	};
 
-	JSON() : Internal(), Type(emJsonType::Null) {}
+	Value() : Internal(), Type(emJsonType::Null) {}
 
-	JSON(initializer_list<JSON> list)
-		: JSON()
+	Value(initializer_list<Value> list)
+		: Value()
 	{
 		SetType(emJsonType::Object);
 		for (auto i = list.begin(), e = list.end(); i != e; ++i, ++i)
 			operator[](i->ToString()) = *std::next(i);
 	}
 
-	JSON(JSON&& other)
+	Value(Value&& other)
 		: Internal(other.Internal)
 		, Type(other.Type)
 	{
 		other.Type = emJsonType::Null; other.Internal.Map = nullptr;
 	}
 
-	JSON& operator=(JSON&& other) {
+	Value& operator=(Value&& other) {
 		ClearInternal();
 		Internal = other.Internal;
 		Type = other.Type;
@@ -130,16 +133,16 @@ public:
 		return *this;
 	}
 
-	JSON(const JSON &other) {
+	Value(const Value &other) {
 		switch (other.Type) {
 		case emJsonType::Object:
 			Internal.Map =
-				new map<string, JSON>(other.Internal.Map->begin(),
+				new map<string, Value>(other.Internal.Map->begin(),
 					other.Internal.Map->end());
 			break;
 		case emJsonType::Array:
 			Internal.List =
-				new deque<JSON>(other.Internal.List->begin(),
+				new deque<Value>(other.Internal.List->begin(),
 					other.Internal.List->end());
 			break;
 		case emJsonType::String:
@@ -152,17 +155,17 @@ public:
 		Type = other.Type;
 	}
 
-	JSON& operator=(const JSON &other) {
+	Value& operator=(const Value &other) {
 		ClearInternal();
 		switch (other.Type) {
 		case emJsonType::Object:
 			Internal.Map =
-				new map<string, JSON>(other.Internal.Map->begin(),
+				new map<string, Value>(other.Internal.Map->begin(),
 					other.Internal.Map->end());
 			break;
 		case emJsonType::Array:
 			Internal.List =
-				new deque<JSON>(other.Internal.List->begin(),
+				new deque<Value>(other.Internal.List->begin(),
 					other.Internal.List->end());
 			break;
 		case emJsonType::String:
@@ -176,41 +179,36 @@ public:
 		return *this;
 	}
 
-	~JSON() {
-		switch (Type) {
-		case emJsonType::Array:
-			delete Internal.List;
-			break;
-		case emJsonType::Object:
-			delete Internal.Map;
-			break;
-		case emJsonType::String:
-			delete Internal.String;
-			break;
-		default:;
-		}
+	~Value() {
+		ClearInternal();
 	}
 
+	void clear() 
+	{
+		ClearInternal();
+		Type = emJsonType::Null;
+		Internal.Int = 0;
+	}
 	template <typename T>
-	JSON(T b, typename enable_if<is_same<T, bool>::value>::type* = 0) : Internal(b), Type(emJsonType::Boolean) {}
+	Value(T b, typename enable_if<is_same<T, bool>::value>::type* = 0) : Internal(b), Type(emJsonType::Boolean) {}
 
 	template <typename T>
-	JSON(T i, typename enable_if<is_integral<T>::value && !is_same<T, bool>::value>::type* = 0) : Internal((long)i), Type(emJsonType::Integral) {}
+	Value(T i, typename enable_if<is_integral<T>::value && !is_same<T, bool>::value>::type* = 0) : Internal((long)i), Type(emJsonType::Integral) {}
 
 	template <typename T>
-	JSON(T f, typename enable_if<is_floating_point<T>::value>::type* = 0) : Internal((double)f), Type(emJsonType::Floating) {}
+	Value(T f, typename enable_if<is_floating_point<T>::value>::type* = 0) : Internal((double)f), Type(emJsonType::Floating) {}
 
 	template <typename T>
-	JSON(T s, typename enable_if<is_convertible<T, string>::value>::type* = 0) : Internal(string(s)), Type(emJsonType::String) {}
+	Value(T s, typename enable_if<is_convertible<T, string>::value>::type* = 0) : Internal(string(s)), Type(emJsonType::String) {}
 
-	JSON(std::nullptr_t) : Internal(), Type(emJsonType::Null) {}
+	Value(std::nullptr_t) : Internal(), Type(emJsonType::Null) {}
 
-	static JSON Make(emJsonType type) {
-		JSON ret; ret.SetType(type);
+	static Value Make(emJsonType type) {
+		Value ret; ret.SetType(type);
 		return ret;
 	}
 
-	static JSON Load(const string &);
+	static std::string Load(const string &str, Value& jsonRoot);
 
 	template <typename T>
 	void append(T arg) {
@@ -223,48 +221,48 @@ public:
 	}
 
 	template <typename T>
-	typename enable_if<is_same<T, bool>::value, JSON&>::type operator=(T b) {
+	typename enable_if<is_same<T, bool>::value, Value&>::type operator=(T b) {
 		SetType(emJsonType::Boolean); Internal.Bool = b; return *this;
 	}
 
 	template <typename T>
-	typename enable_if<is_integral<T>::value && !is_same<T, bool>::value, JSON&>::type operator=(T i) {
+	typename enable_if<is_integral<T>::value && !is_same<T, bool>::value, Value&>::type operator=(T i) {
 		SetType(emJsonType::Integral); Internal.Int = i; return *this;
 	}
 
 	template <typename T>
-	typename enable_if<is_floating_point<T>::value, JSON&>::type operator=(T f) {
+	typename enable_if<is_floating_point<T>::value, Value&>::type operator=(T f) {
 		SetType(emJsonType::Floating); Internal.Float = f; return *this;
 	}
 
 	template <typename T>
-	typename enable_if<is_convertible<T, string>::value, JSON&>::type operator=(T s) {
+	typename enable_if<is_convertible<T, string>::value, Value&>::type operator=(T s) {
 		SetType(emJsonType::String); *Internal.String = string(s); return *this;
 	}
 
-	JSON& operator[](const string &key) {
+	Value& operator[](const string &key) {
 		SetType(emJsonType::Object); return Internal.Map->operator[](key);
 	}
 
-	JSON& operator[](unsigned index) {
+	Value& operator[](unsigned index) {
 		SetType(emJsonType::Array);
 		if (index >= Internal.List->size()) Internal.List->resize(index + 1);
 		return Internal.List->operator[](index);
 	}
 
-	JSON &at(const string &key) {
+	Value &at(const string &key) {
 		return operator[](key);
 	}
 
-	const JSON &at(const string &key) const {
+	const Value &at(const string &key) const {
 		return Internal.Map->at(key);
 	}
 
-	JSON &at(unsigned index) {
+	Value &at(unsigned index) {
 		return operator[](index);
 	}
 
-	const JSON &at(unsigned index) const {
+	const Value &at(unsigned index) const {
 		return Internal.List->at(index);
 	}
 
@@ -292,7 +290,7 @@ public:
 
 	emJsonType JSONType() const { return Type; }
 
-	/// Functions for getting primitives from the JSON object.
+	/// Functions for getting primitives from the Value object.
 	bool IsNull() const { return Type == emJsonType::Null; }
 
 	string ToString() const { bool b; return std::move(ToString(b)); }
@@ -319,32 +317,32 @@ public:
 		return ok ? Internal.Bool : false;
 	}
 
-	JSONWrapper<map<string, JSON>> ObjectRange() {
+	JSONWrapper<map<string, Value>> ObjectRange() {
 		if (Type == emJsonType::Object)
-			return JSONWrapper<map<string, JSON>>(Internal.Map);
-		return JSONWrapper<map<string, JSON>>(nullptr);
+			return JSONWrapper<map<string, Value>>(Internal.Map);
+		return JSONWrapper<map<string, Value>>(nullptr);
 	}
 
-	JSONWrapper<deque<JSON>> ArrayRange() {
+	JSONWrapper<deque<Value>> ArrayRange() {
 		if (Type == emJsonType::Array)
-			return JSONWrapper<deque<JSON>>(Internal.List);
-		return JSONWrapper<deque<JSON>>(nullptr);
+			return JSONWrapper<deque<Value>>(Internal.List);
+		return JSONWrapper<deque<Value>>(nullptr);
 	}
 
-	JSONConstWrapper<map<string, JSON>> ObjectRange() const {
+	JSONConstWrapper<map<string, Value>> ObjectRange() const {
 		if (Type == emJsonType::Object)
-			return JSONConstWrapper<map<string, JSON>>(Internal.Map);
-		return JSONConstWrapper<map<string, JSON>>(nullptr);
+			return JSONConstWrapper<map<string, Value>>(Internal.Map);
+		return JSONConstWrapper<map<string, Value>>(nullptr);
 	}
 
 
-	JSONConstWrapper<deque<JSON>> ArrayRange() const {
+	JSONConstWrapper<deque<Value>> ArrayRange() const {
 		if (Type == emJsonType::Array)
-			return JSONConstWrapper<deque<JSON>>(Internal.List);
-		return JSONConstWrapper<deque<JSON>>(nullptr);
+			return JSONConstWrapper<deque<Value>>(Internal.List);
+		return JSONConstWrapper<deque<Value>>(nullptr);
 	}
 
-	string dump(int depth = 1, string tab = "  ") const {
+	string dump(int depth = 0, string tab = "\t") const {
 		string pad = "";
 		for (int i = 0; i < depth; ++i, pad += tab);
 
@@ -352,25 +350,25 @@ public:
 		case emJsonType::Null:
 			return "null";
 		case emJsonType::Object: {
-			string s = "{\n";
+			string s = depth == 0 ? pad + "{\n" : "\n" + pad + "{\n";
 			bool skip = true;
 			for (auto &p : *Internal.Map) {
 				if (!skip) s += ",\n";
-				s += (pad + "\"" + p.first + "\" : " + p.second.dump(depth + 1, tab));
+				s += (pad + tab + "\"" + p.first + "\" : " + p.second.dump(depth + 1, tab));
 				skip = false;
 			}
-			s += ("\n" + pad.erase(0, 2) + "}");
+			s += ("\n" + pad + "}");
 			return s;
 		}
 		case emJsonType::Array: {
-			string s = "[";
+			string s = "\n" + pad + "[\n";
 			bool skip = true;
 			for (auto &p : *Internal.List) {
 				if (!skip) s += ", ";
 				s += p.dump(depth + 1, tab);
 				skip = false;
 			}
-			s += "]";
+			s += "\n" + pad + "]";
 			return s;
 		}
 		case emJsonType::String:
@@ -387,7 +385,7 @@ public:
 		return "";
 	}
 
-	friend std::ostream& operator<<(std::ostream&, const JSON &);
+	friend std::ostream& operator<<(std::ostream&, const Value &);
 
 private:
 	void SetType(emJsonType type) {
@@ -398,8 +396,8 @@ private:
 
 		switch (type) {
 		case emJsonType::Null:      Internal.Map = nullptr;                break;
-		case emJsonType::Object:    Internal.Map = new map<string, JSON>(); break;
-		case emJsonType::Array:     Internal.List = new deque<JSON>();     break;
+		case emJsonType::Object:    Internal.Map = new map<string, Value>(); break;
+		case emJsonType::Array:     Internal.List = new deque<Value>();     break;
 		case emJsonType::String:    Internal.String = new string();           break;
 		case emJsonType::Floating:  Internal.Float = 0.0;                    break;
 		case emJsonType::Integral:  Internal.Int = 0;                      break;
@@ -411,7 +409,7 @@ private:
 
 private:
 	/* beware: only call if YOU know that Internal is allocated. No checks performed here.
-	This function should be called in a constructed JSON just before you are going to
+	This function should be called in a constructed Value just before you are going to
 	overwrite Internal...
 	*/
 	void ClearInternal() {
@@ -428,35 +426,36 @@ private:
 	emJsonType Type = emJsonType::Null;
 };
 
-JSON Array() {
-	return std::move(JSON::Make(JSON::emJsonType::Array));
+Value Array() {
+	return std::move(Value::Make(Value::emJsonType::Array));
 }
 
 template <typename... T>
-JSON Array(T... args) {
-	JSON arr = JSON::Make(JSON::emJsonType::Array);
+Value Array(T... args) {
+	Value arr = Value::Make(Value::emJsonType::Array);
 	arr.append(args...);
 	return std::move(arr);
 }
 
-JSON Object() {
-	return std::move(JSON::Make(JSON::emJsonType::Object));
+Value Object() {
+	return std::move(Value::Make(Value::emJsonType::Object));
 }
 
-std::ostream& operator<<(std::ostream &os, const JSON &json) {
+std::ostream& operator<<(std::ostream &os, const Value &json) {
 	os << json.dump();
 	return os;
 }
 
 namespace {
-	JSON parse_next(const string &, size_t &);
+	Value parse_next(const string &, size_t &);
 
+	//去掉空格
 	void consume_ws(const string &str, size_t &offset) {
 		while (isspace(str[offset])) ++offset;
 	}
 
-	JSON parse_object(const string &str, size_t &offset) {
-		JSON Object = JSON::Make(JSON::emJsonType::Object);
+	Value parse_object(const string &str, size_t &offset) {
+		Value Object = Value::Make(Value::emJsonType::Object);
 
 		++offset;
 		consume_ws(str, offset);
@@ -465,14 +464,16 @@ namespace {
 		}
 
 		while (true) {
-			JSON Key = parse_next(str, offset);
+			Value Key = parse_next(str, offset);
 			consume_ws(str, offset);
 			if (str[offset] != ':') {
-				std::cerr << "Error: Object: Expected colon, found '" << str[offset] << "'\n";
+				std::stringstream ss;
+				ss << "Error: Object: Expected ':', found '" << str[offset] << "'.";
+				throw std::invalid_argument(ss.str());
 				break;
 			}
 			consume_ws(str, ++offset);
-			JSON Value = parse_next(str, offset);
+			Value Value = parse_next(str, offset);
 			Object[Key.ToString()] = Value;
 
 			consume_ws(str, offset);
@@ -483,7 +484,9 @@ namespace {
 				++offset; break;
 			}
 			else {
-				std::cerr << "ERROR: Object: Expected comma, found '" << str[offset] << "'\n";
+				std::stringstream ss;
+				ss << "ERROR: Object: Expected ',' or '}', found '" << str[offset] << "'.";
+				throw std::invalid_argument(ss.str());
 				break;
 			}
 		}
@@ -491,8 +494,8 @@ namespace {
 		return std::move(Object);
 	}
 
-	JSON parse_array(const string &str, size_t &offset) {
-		JSON Array = JSON::Make(JSON::emJsonType::Array);
+	Value parse_array(const string &str, size_t &offset) {
+		Value Array = Value::Make(Value::emJsonType::Array);
 		unsigned index = 0;
 
 		++offset;
@@ -512,16 +515,18 @@ namespace {
 				++offset; break;
 			}
 			else {
-				std::cerr << "ERROR: Array: Expected ',' or ']', found '" << str[offset] << "'\n";
-				return std::move(JSON::Make(JSON::emJsonType::Array));
+				std::stringstream ss;
+				ss << "ERROR: Array: Expected ',' or ']', found '" << str[offset] << "'.";
+				throw std::invalid_argument(ss.str());
+				return std::move(Value::Make(Value::emJsonType::Array));
 			}
 		}
 
 		return std::move(Array);
 	}
 
-	JSON parse_string(const string &str, size_t &offset) {
-		JSON String;
+	Value parse_string(const string &str, size_t &offset) {
+		Value String;
 		string val;
 		for (char c = str[++offset]; c != '\"'; c = str[++offset]) {
 			if (c == '\\') {
@@ -541,8 +546,10 @@ namespace {
 						if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
 							val += c;
 						else {
-							std::cerr << "ERROR: String: Expected hex character in unicode escape, found '" << c << "'\n";
-							return std::move(JSON::Make(JSON::emJsonType::String));
+							std::stringstream ss;
+							ss << "ERROR: String: Expected hex character in unicode escape, found '" << c << "'.";
+							throw std::invalid_argument(ss.str());
+							return std::move(Value::Make(Value::emJsonType::String));
 						}
 					}
 					offset += 4;
@@ -558,8 +565,8 @@ namespace {
 		return std::move(String);
 	}
 
-	JSON parse_number(const string &str, size_t &offset) {
-		JSON Number;
+	Value parse_number(const string &str, size_t &offset) {
+		Value Number;
 		string val, exp_str;
 		char c;
 		bool isDouble = false;
@@ -583,8 +590,10 @@ namespace {
 				if (c >= '0' && c <= '9')
 					exp_str += c;
 				else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
-					std::cerr << "ERROR: Number: Expected a number for exponent, found '" << c << "'\n";
-					return std::move(JSON::Make(JSON::emJsonType::Null));
+					std::stringstream ss;
+					ss << "ERROR: Number: Expected a number for exponent, found '" << c << "'.";
+					throw std::invalid_argument(ss.str());
+					return std::move(Value::Make(Value::emJsonType::Null));
 				}
 				else
 					break;
@@ -592,8 +601,10 @@ namespace {
 			exp = std::stol(exp_str);
 		}
 		else if (!isspace(c) && c != ',' && c != ']' && c != '}') {
-			std::cerr << "ERROR: Number: unexpected character '" << c << "'\n";
-			return std::move(JSON::Make(JSON::emJsonType::Null));
+			std::stringstream ss;
+			ss << "ERROR: Number: unexpected character '" << c << "'.";
+			throw std::invalid_argument(ss.str());
+			return std::move(Value::Make(Value::emJsonType::Null));
 		}
 		--offset;
 
@@ -608,31 +619,36 @@ namespace {
 		return std::move(Number);
 	}
 
-	JSON parse_bool(const string &str, size_t &offset) {
-		JSON Bool;
+	Value parse_bool(const string &str, size_t &offset) {
+		Value Bool;
 		if (str.substr(offset, 4) == "true")
 			Bool = true;
 		else if (str.substr(offset, 5) == "false")
 			Bool = false;
 		else {
-			std::cerr << "ERROR: Bool: Expected 'true' or 'false', found '" << str.substr(offset, 5) << "'\n";
-			return std::move(JSON::Make(JSON::emJsonType::Null));
+			std::stringstream ss;
+			ss << "ERROR: Bool: Expected 'true' or 'false', found '" << str.substr(offset, 5) << "'.";
+			throw std::invalid_argument(ss.str());
+
+			return std::move(Value::Make(Value::emJsonType::Null));
 		}
 		offset += (Bool.ToBool() ? 4 : 5);
 		return std::move(Bool);
 	}
 
-	JSON parse_null(const string &str, size_t &offset) {
-		JSON Null;
+	Value parse_null(const string &str, size_t &offset) {
+		Value Null;
 		if (str.substr(offset, 4) != "null") {
-			std::cerr << "ERROR: Null: Expected 'null', found '" << str.substr(offset, 4) << "'\n";
-			return std::move(JSON::Make(JSON::emJsonType::Null));
+			std::stringstream ss;
+			ss << "ERROR: Null: Expected 'null', found '" << str.substr(offset, 4) << "'.";
+			throw std::invalid_argument(ss.str());
+			return std::move(Value::Make(Value::emJsonType::Null));
 		}
 		offset += 4;
 		return std::move(Null);
 	}
 
-	JSON parse_next(const string &str, size_t &offset) {
+	Value parse_next(const string &str, size_t &offset) {
 		char value;
 		consume_ws(str, offset);
 		value = str[offset];
@@ -646,19 +662,81 @@ namespace {
 		default: if ((value <= '9' && value >= '0') || value == '-')
 			return std::move(parse_number(str, offset));
 		}
-		std::cerr << "ERROR: Parse: Unknown starting character '" << value << "'\n";
-		return JSON();
+
+		{
+			std::stringstream ss;
+			ss << "ERROR: Parse: Unknown starting character '" << value << "'.";
+			throw std::invalid_argument(ss.str());
+		}
+		return Value();
+	}
+
+	std::string json_from_file(const std::string& strFile,Value& jsRoot) {
+		std::string retStr;
+		do 
+		{
+			string contents;
+			ifstream input(strFile);
+			if (!input.is_open())
+			{
+				retStr = "open file " + strFile + " failed!";
+				break;
+			}
+			input.seekg(0, std::ios::end);
+			contents.reserve(input.tellg());
+			input.seekg(0, std::ios::beg);
+
+			contents.assign((std::istreambuf_iterator<char>(input)),
+				std::istreambuf_iterator<char>());
+
+			retStr = Value::Load(contents, jsRoot);
+
+		} while (false);
+
+		return retStr;
 	}
 }
 
-JSON JSON::Load(const string &str) {
+std::string Value::Load(const string &str, Value& jsonRoot) {
 	size_t offset = 0;
-	return std::move(parse_next(str, offset));
+	std::string strErr;
+	try
+	{
+		jsonRoot = parse_next(str, offset);
+	}
+	catch (const std::exception& e)
+	{
+		strErr = e.what();
+		uint32_t rowNum = 0;
+		uint32_t colNum = 0;
+		if (offset > 0)
+		{
+			size_t posLineEnd = 0;//记录最后一个回车的offset
+			do 
+			{
+				auto poslastEnd = str.find_first_of('\n', posLineEnd);
+				if (poslastEnd != std::string::npos){
+					++poslastEnd;
+					++rowNum;
+					if (poslastEnd > offset){
+						colNum = offset - posLineEnd + 1;
+						break;
+					}
+					else
+						posLineEnd = poslastEnd;
+				}
+				else{
+					colNum = offset - posLineEnd  + 1;
+					break;
+				}
+
+			} while (posLineEnd < offset);
+		}
+		strErr = strErr + "row:" + std::to_string(rowNum) + " col:" + std::to_string(colNum);
+	}
+	return strErr;
 }
 
 END_NAMESPACE(mmrUtil)
-
-
-
 
 #endif // !JSON_HPP
