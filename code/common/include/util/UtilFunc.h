@@ -23,7 +23,14 @@ BEGINE_NAMESPACE(mmrUtil)
 	//将编码字符转换为字节序
 	COMMON_FUN_API bool codeToString(const std::string strIn, std::string& strOut);
 
-	COMMON_FUN_API bool GetAppPathAndName(std::string& filePath, std::string& exeName);
+	//路径带最后一个"/"
+	COMMON_FUN_API bool getAppPathAndName(std::string& filePath, std::string& exeName);
+
+	COMMON_FUN_API const char* getFileName(const char* szFullPath);
+
+	COMMON_FUN_API std::string generateGUID();
+
+	COMMON_FUN_API std::string getComplieTime();
 
 END_NAMESPACE(mmrUtil)
 #endif

@@ -101,7 +101,7 @@ bool mmrUtil::CLogger::init(const std::string& strPath, const std::string& strNa
 {
 	m_strLogDir = strPath;
 	m_strLogName = strName;
-	m_strFilePath = m_strLogDir + "/" + m_strLogName + ".log";
+	m_strFilePath = m_strLogDir + m_strLogName + ".log";
 #ifdef OS_WIN
 	if (_access(m_strLogDir.c_str(), 0) == -1)//如果数据库文件夹不存在，则创建
 	{
@@ -135,8 +135,8 @@ bool mmrUtil::CLogger::start()
 	if (m_strLogDir.empty() || m_strLogName.empty())
 	{
 		std::string logDir, logName;
-		GetAppPathAndName(logDir, logName);
-		logDir += "/log";
+		getAppPathAndName(logDir, logName);
+		logDir += "log/";
 		if (!init(logDir, logName)) 
 		{
 			return false;
@@ -153,6 +153,8 @@ bool mmrUtil::CLogger::start()
 		}
 		m_logStream.seekp(0, std::ios::end);
 	}
+
+	LOG_FORCE("----------------- start -----------------");
 	return true;
 }
 

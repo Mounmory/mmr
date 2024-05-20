@@ -5,7 +5,8 @@
 #include "util/UtilFunc.h"
 #include "util/CLicenseObj.h"
 #include "malloc.h"
-
+#include <memory>
+#include <set>
 #define MAX_STR_LEN 1024
 
 void UTF8LocalTest();
@@ -14,9 +15,23 @@ void licTest();
 
 void byteCodeConvertTest();
 
+template<typename _T>
+class WeakPtrComp {
+public:
+	bool operator()(std::weak_ptr<_T> t1, std::weak_ptr<_T> t2)const {
+		return t1.lock() < t2.lock();
+	}
+};
+
 int main(int argc, char **argv)
 {
+	std::shared_ptr<int> iPtr;
 
+
+	std::set<std::weak_ptr<int>, WeakPtrComp<int>> setPtr;
+
+	setPtr.insert(iPtr);
+	setPtr.insert(iPtr);
 	//char* pChar = new char[20];
 	//std::cout << "size of char " << _msize(pChar) << std::endl;
 	//std::cout << "size of char " << malloc_usable_size(pChar) << std::endl;//linux

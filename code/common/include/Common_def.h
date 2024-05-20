@@ -49,3 +49,4 @@ static std::string _CutParenthesesNTail(std::string&& prettyFuncon)
 	}
 
 #endif
+

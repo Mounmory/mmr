@@ -174,14 +174,14 @@ bool mmrUtil::codeToString(const std::string strIn, std::string& strOut)
 	return true;
 }
 
-COMMON_FUN_API bool mmrUtil::GetAppPathAndName(std::string& filePath, std::string& exeName)
+COMMON_FUN_API bool mmrUtil::getAppPathAndName(std::string& filePath, std::string& exeName)
 {
 #ifdef OS_WIN
 	char path[MAX_STR_LEN];
 	auto pathLen = GetModuleFileName(NULL, path, MAX_STR_LEN);
 	if (pathLen > MAX_STR_LEN)
 	{
-		std::cerr << "funciton mmrUtil::GetAppPathAndName path len[" << pathLen << "] is longer than max string leng " << std::endl;
+		std::cerr << "funciton mmrUtil::getAppPathAndName path len[" << pathLen << "] is longer than max string leng " << std::endl;
 	}
 	filePath = path;
 
@@ -194,7 +194,7 @@ COMMON_FUN_API bool mmrUtil::GetAppPathAndName(std::string& filePath, std::strin
 	if (pos != std::string::npos)
 	{
 		exeName = &filePath.c_str()[pos + 1];
-		filePath.erase(filePath.begin() + pos, filePath.end());
+		filePath.erase(filePath.begin() + pos + 1, filePath.end());
 	}
 	else
 	{
@@ -217,5 +217,48 @@ COMMON_FUN_API bool mmrUtil::GetAppPathAndName(std::string& filePath, std::strin
 	exeName = tmpName;
 	return true;
 #endif
+}
+
+COMMON_FUN_API std::string mmrUtil::generateGUID()
+{
+	std::string retStr;
+#ifdef OS_WIN
+	//GUID guid;
+	//if (CoCreateGuid(&guid) == RPC_S_OK) {
+	//	// 将GUID转换为字符串形式
+	//	char guidStr[39];
+	//	StringFromGUID2(guid, guidStr, sizeof(guidStr) / sizeof(guidStr[0]));
+
+	//	// 输出GUID
+	//	std::cout << "Generated GUID: " << guidStr << std::endl;
+	//}
+
+#else
+
+
+
+#endif
+
+	return retStr;
+}
+
+COMMON_FUN_API std::string mmrUtil::getComplieTime()
+{
+	return std::string(__DATE__) + " " + std::string(__TIME__);
+}
+
+COMMON_FUN_API const char* mmrUtil::getFileName(const char* szFullPath)
+{
+	char* p = (char*)szFullPath;
+	while (*p) ++p;
+	while (--p >= szFullPath) {
+#ifdef OS_WIN
+		if (*p == '/' || *p == '\\')
+#else
+		if (*p == '/')
+#endif
+			return ++p;
+	}
+	return szFullPath;
 }
 

@@ -43,7 +43,7 @@ public:
 
     /// a method for reading the stored buffer data.
     /// @param offset the index distance with respect to the current read point.
-    const char& operator [](unsigned int offset) const;
+    const char& operator [](uint32_t offset) const;
 
     /// take ownership of the data buffer.
     void SetStream(const char* buffer, size_t length, emEndian order);
@@ -54,10 +54,10 @@ public:
     CDataStream& operator <<(unsigned char c);
     CDataStream& operator <<(float c);
     CDataStream& operator <<(double c);
-    CDataStream& operator <<(int c);
-    CDataStream& operator <<(unsigned int c);
-    CDataStream& operator <<(long long c);
-    CDataStream& operator <<(unsigned long long c);
+    CDataStream& operator <<(int32_t c);
+    CDataStream& operator <<(uint32_t c);
+    CDataStream& operator <<(int64_t c);
+    CDataStream& operator <<(uint64_t c);
     CDataStream& operator <<(unsigned short c);
     CDataStream& operator <<(short c);
 
@@ -67,10 +67,10 @@ public:
     CDataStream& operator >>(unsigned char& c);
     CDataStream& operator >>(float& c);
     CDataStream& operator >>(double& c);
-    CDataStream& operator >>(int& c);
-    CDataStream& operator >>(unsigned int& c);
-    CDataStream& operator >>(long long& c);
-    CDataStream& operator >>(unsigned long long& c);
+    CDataStream& operator >>(int32_t& c);
+    CDataStream& operator >>(uint32_t& c);
+    CDataStream& operator >>(int64_t& c);
+    CDataStream& operator >>(uint64_t& c);
     CDataStream& operator >>(unsigned short& c);
     CDataStream& operator >>(short& c);
 

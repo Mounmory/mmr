@@ -5,7 +5,7 @@
 #include <streambuf>
 
 using namespace std;
-using mmrUtil::JSON;
+using Json::Value;
 
 #ifdef OS_WIN
 std::string strJsonIn = "D:/VMs/jsonTestIn.json";
@@ -24,25 +24,21 @@ std::string strJsonOut = "/media/sf_VMs/jsonTestOut.json";
 */
 int main()
 {
-	string inFile = strJsonIn;
-	string contents;
-	ifstream input(inFile);
-	if (!input.is_open()) 
+	Value obj1;
+	
+	std::string errStr = Json::json_from_file(strJsonIn, obj1);
+
+	if (!errStr.empty()) 
 	{
-		std::cout << "open file failed!" << std::endl;
+		std::cout << "error message :" << errStr << std::endl;
+		return -1;
 	}
-	input.seekg(0, ios::end);
-	contents.reserve(input.tellg());
-	input.seekg(0, ios::beg);
 
-	contents.assign((istreambuf_iterator<char>(input)),
-		istreambuf_iterator<char>());
+	cout<< "obj1 before move\n" << obj1 << endl;
 
-	JSON obj1 = JSON::Load(contents);
+	std::cout << "dump json \n" << obj1.dump() << std::endl;
 
-	cout<< "obj1 befor move\n" << obj1 << endl;
-
-	JSON obj2 = std::move(obj1);
+	Value obj2 = std::move(obj1);
 	cout << "obj2 after move\n" << obj2 << endl;
 	cout << "obj1 after move\n" << obj1 << endl;
 	obj1 = std::move(obj2);
@@ -50,29 +46,35 @@ int main()
 	cout << "obj1 after move\n" << obj1 << endl;
 
 	ofstream output1;
-	output1.open(inFile, std::ofstream::out);
+	output1.open(strJsonIn, std::ofstream::out);
 	if (output1.is_open())
 	{
 		output1 << obj1 << std::endl;
 	}
 
 	//дJson
-	JSON Obj = mmrUtil::Object();
-	Obj["Key1"] = 1.023;
-	Obj["Key2"] = "Value";
+	Value Obj = Json::Object();
+	Value Obj1 = Json::Object();
+	Value Obj11 = Json::Object();
 
-	JSON Obj2 = mmrUtil::Object();
-	Obj2["Key3"] = 1;
-	Obj2["Key4"] = "hello!";
-	Obj2["Key4"] = 3.140909077;
+	Obj11["para1"] = 1;
+	Obj1["ComponentDemo"] = Obj11;
+	Obj["Components"].append(Obj1);
+	//Obj["Key1"] = 1.023;
+	//Obj["Key2"] = "Value";
 
-	// Nested Object
-	Obj["Key6"] = std::move(Obj2);
+	//JSON Obj2 = mmrUtil::Object();
+	//Obj2["Key3"] = 1;
+	//Obj2["Key4"] = "hello!";
+	//Obj2["Key4"] = 3.140909077;
 
-	if (Obj.hasKey("Key1"))
-	{
-		std::cout <<  "Key1 value is "<< Obj.at("Key1").ToFloat()<<std::endl;
-	}
+	//// Nested Object
+	//Obj["Key6"] = std::move(Obj2);
+
+	//if (Obj.hasKey("Key1"))
+	//{
+	//	std::cout <<  "Key1 value is "<< Obj.at("Key1").ToFloat()<<std::endl;
+	//}
 
 
 	// Dump Obj to a string.

@@ -1,47 +1,92 @@
 ﻿#include "CCompFramework.h"
 #include "util/Clogger.h"
+#include "util/json.hpp"
+#include "util/UtilFunc.h"
 
-#ifdef OS_WIN
-#include <Windows.h>
-static const char* strLibExtension = ".dll";
-#elif defined OS_LINUX
-#include <dirent.h>
-#include <dlfcn.h>
-static const char* strLibExtension = ".so";
-#endif
+#include <sstream>
+#include <fstream>
+#include <iostream>
 
-bool mmrComp::CCompFramework::start(std::string strConfigPath)
+
+
+bool mmrComp::CCompFramework::start()
 {
 	if (m_bRunning.load(std::memory_order_relaxed))
 	{
 		LOG_WARN("component has been started!");
 		return false;
 	}
+	//启动日志
+	logInstancePtr->start();
+
 	//启动处理线程
 	m_bRunning.store(true, std::memory_order_relaxed);
 	m_threadDeal = std::make_unique<std::thread>(&CCompFramework::dealThread, this);
 
-	//加载所有组件
-#ifdef OS_WIN
-	HINSTANCE hDLL = LoadLibrary("D:/VMs/build/bin/RelWithDebInfo/component/CompTest.dll");
-	if (hDLL == NULL) 
-	{
-		FreeLibrary(hDLL);
-	}
-#elif defined OS_LINUX
-	void* handle = dlopen("/home/mmrPro/build/bin/component/libCompTest.so", RTLD_LAZY);
-	if (handle == nullptr)
-	{
-		dlclose(handle);
-	}
-#endif
+	//读配置文件，加载所有组件
+	std::string strAppPath, strAppName;
+	mmrUtil::getAppPathAndName(strAppPath, strAppName);
+	std::string strConfigPath = strAppPath + "config/serviceApp.json";
 
+	Json::Value jsonRoot;
+	std::string strErr = Json::json_from_file(strConfigPath, jsonRoot);
+
+	if (jsonRoot.IsNull() || !strErr.empty())
+	{
+		LOG_ERROR("parse json file [%s] failed! error message is: %s", strConfigPath.c_str(), strErr.c_str());
+		return false;
+	}
+
+	auto components = jsonRoot["Components"];
+	if (components.IsNull())
+	{
+		LOG_ERROR("config file [%s] do not has kye [Components] !", strConfigPath.c_str());
+		return false;
+	}
+
+	for (const auto& iterComp : components.ObjectRange())
+	{
+#ifdef OS_WIN
+		std::string strLibPath = strAppPath + "component/" + iterComp.first + ".dll";
+		HINSTANCE handle = LoadLibrary(strLibPath.c_str());
+		if (handle == nullptr)
+		{
+			FreeLibrary(handle);
+		}
+#elif defined OS_LINUX
+		std::string strLibPath = strAppPath + "component/lib" + iterComp.first + ".so";
+		void* handle = dlopen(strLibPath.c_str(), RTLD_LAZY);
+		if (handle == nullptr)
+		{
+			dlclose(handle);
+		}
+#endif
+		else
+		{
+			m_libHandl.insert(handle);
+		}
+	}
 	//初始化所有组件
 	for (const auto& iterComp : m_mapComponents)
 	{
-		iterComp.second->initialise();
+		std::string strComoName = iterComp.second->getName();
+		if (!components.hasKey(strComoName))
+		{
+			LOG_ERROR("component name [%s] do not find in config file!", strComoName.c_str());
+			continue;
+			
+		}
+		if (!iterComp.second->initialise(components[strComoName]))
+		{
+			LOG_ERROR("init component name [%s] failed!", strComoName.c_str());
+			continue;
+		}
 	}
 
+	for (const auto& iterComp : m_mapComponents)
+	{
+		iterComp.second->start();
+	}
 
 	LOG_INFO("framework started!");
 	return true;
@@ -50,21 +95,53 @@ bool mmrComp::CCompFramework::start(std::string strConfigPath)
 
 void mmrComp::CCompFramework::stop()
 {
-	//停止所有组件
-
-
-	//卸载所有动态库
-
 	//停掉线程
 	if (true == m_bRunning)
 	{
-		m_bRunning.store(false,std::memory_order_relaxed);//退出线程
-		m_threadDeal->join();//等待线程结束
+		m_bRunning.store(false, std::memory_order_relaxed);//退出线程
+		m_cvData.notify_all();
+		if (m_threadDeal->joinable())
+		{
+			m_threadDeal->join();//等待线程结束
+		}
 	}
+
+	//停止所有组件
+	for (const auto& iterComp : m_mapComponents)
+	{
+		iterComp.second->stop();
+	}
+
+	//在卸载库前，清空从动态库获取的指针数据
+	m_mapComponents.clear();
+
+	m_mapService.clear();
+
+	//卸载所有动态库
+	for (const auto& iterHandl:m_libHandl)
+	{
+#ifdef OS_WIN
+		FreeLibrary(iterHandl);
+#elif defined OS_LINUX
+		dlclose(iterHandl);
+#endif
+	}
+
+	//清空数据
+	m_mapHandlers.clear();
+
+	while (m_queueDealData.size() > 0)
+		m_queueDealData.pop();
+
+	while (m_queueDealData.size() > 0)
+		m_queueDealData.pop();
+
+	m_libHandl.clear();
+
 	LOG_INFO("framework stoped!");
 }
 
-void mmrComp::CCompFramework::registHandler(std::string strTopic, IEventHandler* pHandler)
+void mmrComp::CCompFramework::addHandler(std::string strTopic,IEventHandler* pHandler)
 {
 	std::lock_guard<std::mutex> lock(m_mutexHander);
 	m_mapHandlers[strTopic].insert(pHandler);
@@ -75,7 +152,7 @@ void mmrComp::CCompFramework::removeHandler(std::string strTopic, IEventHandler*
 {
 	std::lock_guard<std::mutex> lock(m_mutexHander);
 	auto iterMap = m_mapHandlers.find(strTopic);
-	if (iterMap != m_mapHandlers.end()) 
+	if (iterMap != m_mapHandlers.end())
 	{
 		iterMap->second.erase(pHandler);
 		if (iterMap->second.size() == 0)
@@ -85,49 +162,58 @@ void mmrComp::CCompFramework::removeHandler(std::string strTopic, IEventHandler*
 	}
 }
 
-void mmrComp::CCompFramework::addEvent(std::string strTopic, mmrUtil::CVarDatas varData)
+void mmrComp::CCompFramework::addEvenVartData(mmrUtil::CVarDatas varData)
 {
-	std::lock_guard<std::mutex> lock(m_mutexData);
-	m_queueAddData.emplace(std::make_pair(std::move(strTopic), std::move(varData)));
+	std::unique_lock<std::mutex> lock(m_mutexData);
+	m_queueAddData.emplace(std::make_pair(varData.getName(), std::move(varData)));
+	m_cvData.notify_all();
 }
 
 void mmrComp::CCompFramework::dealThread()
 {
-	while (m_bRunning)
+	while (m_bRunning.load(std::memory_order_relaxed))
 	{
 		if (m_queueAddData.size() > 0)
 		{
 			LOG_INFO("Begine to deal event ,size[%d]", m_queueAddData.size());
 
-			{
+			{//交换数据
 				std::lock_guard<std::mutex> lock(m_mutexData);
 				std::swap(m_queueAddData, m_queueDealData);
 			}
 
-			std::lock_guard<std::mutex> lock(m_mutexHander);
-			while (m_queueDealData.size() > 0)
-			{
-				const auto& data = m_queueDealData.front();
-
-				auto iterMap = m_mapHandlers.find(data.first);
-				if (iterMap != m_mapHandlers.end())
+			{//处理数据
+				std::lock_guard<std::mutex> lock(m_mutexHander);
+				while (m_queueDealData.size() > 0)
 				{
-					for (const auto iterHandler : iterMap->second)
+					const auto& data = m_queueDealData.front();
+
+					auto iterMap = m_mapHandlers.find(data.first);
+					if (iterMap != m_mapHandlers.end())
 					{
-						iterHandler->handleEvent(data.first, data.second);
+						for (const auto iterHandler : iterMap->second)
+						{
+							iterHandler->handleEvent(data.second);
+						}
 					}
+					m_queueDealData.pop();
 				}
-				m_queueDealData.pop();
 			}
 		}
-		else
+
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));//休眠1ms
+			std::unique_lock<std::mutex> lock(m_mutexData);
+			while (m_queueAddData.empty() && m_bRunning.load(std::memory_order_relaxed))
+			{
+				m_cvData.wait_for(lock, std::chrono::seconds(100));
+			}
 		}
 	}
+
+	LOG_INFO("frame work deal thread exit!", m_queueAddData.size());
 }
 
-bool mmrComp::CCompFramework::addComponent(IComponent* pComp)
+bool mmrComp::CCompFramework::addComponent(std::unique_ptr<IComponent> pComp)
 {
 	uint16_t usIndex = pComp->getIndex();
 	auto iterComp = m_mapComponents.find(usIndex);
@@ -138,12 +224,12 @@ bool mmrComp::CCompFramework::addComponent(IComponent* pComp)
 		return false;
 	}
 
-	m_mapComponents.insert(std::make_pair(usIndex, pComp));
-	LOG_INFO("Component [%s] index [%d] load succesfully!");
+	LOG_INFO("Component [%s] index [%d] load succesfully!", pComp->getName(), pComp->getIndex());
+	m_mapComponents.insert(std::make_pair(usIndex, std::move(pComp)));
 	return true;
 }
 
-void mmrComp::CCompFramework::removeComponet(IComponent* pComp)
-{
-	//暂不实现
-}
+//void mmrComp::CCompFramework::removeComponet(uint16_t usIndex)
+//{
+//	//暂不实现
+//}

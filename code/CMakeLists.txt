@@ -61,7 +61,7 @@ include_directories(${COMMON_INCLUDE_DIR})
 ADD_SUBDIRECTORY(app)
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(service)
-ADD_SUBDIRECTORY(tools)
+#ADD_SUBDIRECTORY(tools)
 
 if(WIN32)
 	option(BUILD_CREO_LIB "build creo lib" "ON")

@@ -1,6 +1,7 @@
 ﻿#ifndef ICOMPONENT_H
 #define ICOMPONENT_H
 #include <Common_def.h>
+#include "util/json.hpp"
 
 class IComponent 
 {
@@ -12,9 +13,11 @@ public:
 
 	virtual const char* getName() = 0;
 	
-	virtual bool initialise() = 0;
+	virtual bool initialise(Json::Value& jsonConfig) = 0;
 
-	virtual void terminate() = 0;
+	virtual bool start() = 0;
+
+	virtual void stop() = 0;
 };
 
 

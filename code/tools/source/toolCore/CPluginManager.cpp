@@ -27,7 +27,7 @@ int MmrTools::CPluginManager::loadPuglins(const std::string& strPath)
 
 	//查找文件夹下所有文件
 #ifdef OS_WIN
-	std::string searchPath = strPath + "/*" + strLibExtension;
+	std::string searchPath = strPath + "*" + strLibExtension;
 	WIN32_FIND_DATA findData;
 	HANDLE hFind = FindFirstFile(searchPath.c_str(), &findData);
 	if (hFind != INVALID_HANDLE_VALUE)

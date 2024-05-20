@@ -1,6 +1,6 @@
-project(CompTest)
+project(ComponentDemo)
 
 build_service_component(
-	CompTest
+	ComponentDemo
 	TARGET_LIBRARIES serviceFramework mmrUtil mmrNet
 )

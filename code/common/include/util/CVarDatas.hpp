@@ -413,16 +413,21 @@ class CVarDatas
 public:
 	CVarDatas()	
 		:m_pMapVars(std::unique_ptr<MapVars>(new MapVars))
+		, m_ulType(0)
 	{
 	}
 
 	CVarDatas(const CVarDatas& rhs)
 		:m_pMapVars(std::unique_ptr<MapVars>(new MapVars((*rhs.m_pMapVars))))
+		, m_strName(rhs.m_strName)
+		, m_ulType(rhs.m_ulType)
 	{
 	}
 
 	CVarDatas(CVarDatas&& rhs)
 		:m_pMapVars(std::move(rhs.m_pMapVars))
+		, m_strName(std::move(rhs.m_strName))
+		, m_ulType(std::exchange(rhs.m_ulType,0))
 	{
 	}
 
@@ -431,11 +436,15 @@ public:
 	CVarDatas& operator = (const CVarDatas& rhs) 
 	{
 		*m_pMapVars = *rhs.m_pMapVars;
+		m_strName = rhs.m_strName;
+		m_ulType = rhs.m_ulType;
 	}
 
 	CVarDatas& operator = (CVarDatas&& rhs)
 	{
 		m_pMapVars = std::move(rhs.m_pMapVars);
+		m_strName = std::move(rhs.m_strName);
+		m_ulType = std::exchange(rhs.m_ulType, 0);
 	}
 
 	bool isContain(std::string strKey) 
@@ -472,8 +481,19 @@ public:
 		}
 		return iterVar->second;
 	}
+
+	void setName(std::string strName) { m_strName = std::move(strName); }
+
+	const std::string& getName() const { return m_strName; }
+
+	void setType(uint32_t ulType) { m_ulType = ulType; }
+
+	const uint32_t getType() const { return m_ulType; }
+
 private:
 	std::unique_ptr<MapVars> m_pMapVars;
+	std::string m_strName;
+	uint32_t m_ulType;
 };
 
 

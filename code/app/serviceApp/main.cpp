@@ -5,24 +5,48 @@
 #include "util/UtilFunc.h"
 #include "util/CLicenseObj.h"
 #include "util/Clogger.h"
-#include "CompTest/IHelloService.h"
+#include "ComponentDemo/IHelloService.h"
 #include "core/include/CCompFramework.h"
 
 #define MAX_STR_LEN 1024
 
-
 int main(int argc, char **argv)
 {
-	//启动日志
-	std::string strFilePath;
-	CoreFrameworkIns->start(strFilePath);
 
-	auto helloSer = CoreFrameworkIns->getService<IHelloService>();
+	//启动框架
+	std::cout << mmrUtil::getFileName(argv[0]) << " start...." << std::endl;
+	std::cout << "complied time: " << mmrUtil::getComplieTime() << std::endl;
 
-	if (helloSer)
+	CoreFrameworkIns->start();
+
 	{
-		helloSer->sayHello();
+		auto helloSer = CoreFrameworkIns->getService<IHelloService>();
+
+		mmrUtil::CVarDatas varData;
+		varData.setName("info1");
+		varData.addVar("name", "test!");
+		varData.addVar("value", 10);
+		CoreFrameworkIns->addEvenVartData(std::move(varData));
+		varData.setName("info2");
+		CoreFrameworkIns->addEvenVartData(std::move(varData));
+		if (helloSer)
+		{
+			helloSer->sayHello();
+		}
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 	}
+
+
+	CoreFrameworkIns->stop();
+
+	//for (int i = 0; i < 10000; ++i)
+	//{
+	//	CoreFrameworkIns->start();
+
+	//	CoreFrameworkIns->stop();
+	//	std::cout << "i value is " << i << std::endl;
+	//}
+
 	std::cout << "输入任意字符继续..." << std::endl;
 	std::cin.get();
 	return 0;

@@ -91,7 +91,7 @@ bool CDataStream::empty() const
    return _buffer.empty();
 }
 
-const char& CDataStream::operator [](unsigned int offset) const
+const char& CDataStream::operator [](uint32_t offset) const
 {
    return _buffer[_read_pos+offset];
 }
@@ -113,7 +113,7 @@ void CDataStream::SetStream(const char* buffer, size_t length, emEndian stream)
 
    // take ownership of the data
    // copy the data, expensive!
-   //for(unsigned int i=0; i<length; ++i)
+   //for(unsigned uint32_t i=0; i<length; ++i)
    //{
    //   _buffer[i] = buffer[i];
    //}
@@ -146,7 +146,7 @@ void CDataStream::DoFlip(char* buf, size_t bufsize)
 
 void CDataStream::DoWrite(const char* buf, size_t bufsize)
 {
-   for(unsigned int i=0; i<bufsize; ++i)
+   for(uint32_t i=0; i<bufsize; ++i)
    {
       // ignores the _write_pos value currently,
       // this should allow for values to always be appended to the end of the buffer.
@@ -156,7 +156,7 @@ void CDataStream::DoWrite(const char* buf, size_t bufsize)
 
 void CDataStream::DoRead(char* ch, size_t bufsize)
 {
-   for(unsigned int i=0; i<bufsize; i++)
+   for(uint32_t i=0; i<bufsize; i++)
    {
       ch[i] = _buffer.at(_read_pos+i);
    }
@@ -187,25 +187,25 @@ CDataStream& CDataStream::operator <<(double d)
    return *this;
 }
 
-CDataStream& CDataStream::operator <<(int d) 
+CDataStream& CDataStream::operator <<(int32_t d) 
 {
    WriteAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator <<(unsigned int d) 
+CDataStream& CDataStream::operator <<(uint32_t d)
 {
    WriteAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator <<(long long d)
+CDataStream& CDataStream::operator <<(int64_t d)
 {
    WriteAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator <<(unsigned long long d)
+CDataStream& CDataStream::operator <<(uint64_t d)
 {
    WriteAlgorithm( d );
    return *this;
@@ -248,25 +248,25 @@ CDataStream& CDataStream::operator >>(double& d)
    return *this;
 }
 
-CDataStream& CDataStream::operator >>(int& d)
+CDataStream& CDataStream::operator >>(int32_t& d)
 {
    ReadAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator >>(unsigned int& d)
+CDataStream& CDataStream::operator >>(uint32_t& d)
 {
    ReadAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator >>(long long& d)
+CDataStream& CDataStream::operator >>(int64_t& d)
 {
    ReadAlgorithm( d );
    return *this;
 }
 
-CDataStream& CDataStream::operator >>(unsigned long long& d)
+CDataStream& CDataStream::operator >>(uint64_t& d)
 {
    ReadAlgorithm( d );
    return *this;
