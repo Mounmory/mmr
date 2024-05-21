@@ -16,7 +16,7 @@
 #define MAX_FILE_SIZE 4*1024*1024
 //#define MAX_FILE_SIZE 100
 
-#define LOG_BY_LEVEL(logLevel,logTag)\
+#define LOG_BY_LEVEL(logLevel)\
 static char* strBufPtr = nullptr;\
 std::lock_guard<std::mutex> guard(m_mutWrite);\
 if (LogCheck(logLevel) == false)\
@@ -42,7 +42,7 @@ m_logStream << "[" << std::this_thread::get_id() << "]"\
 << (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2) << time_info->tm_mday\
 << " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"\
 << std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms\
-<< "[" << #logTag << "]" << strBufPtr << std::endl
+<< strBufPtr << std::endl
 
 
 mmrUtil::CLogger::CLogger()
@@ -168,51 +168,94 @@ void mmrUtil::CLogger::stop()
 
 void mmrUtil::CLogger::LogForce(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
+	//LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
+	static char* strBufPtr = nullptr;
+	std::lock_guard<std::mutex> guard(m_mutWrite);
+	if (LogCheck(emLogLevel::LOG_FORCE) == false)
+		return;
+	va_list arglist;
+	va_start(arglist, format);
+	int strLen = vsnprintf(m_pBuf, m_lBufLen, format, arglist);
+	if (strLen > m_lBufLen && strLen < m_lBigBufLen)
+	{
+		vsnprintf(m_pBigBuf, m_lBigBufLen, format, arglist);
+		strBufPtr = &m_pBigBuf[0];
+	}
+	else
+	{
+		strBufPtr = &m_pBuf[0];
+	}
+	va_end(arglist);
+	auto now = std::chrono::system_clock::now();
+	auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+	std::time_t current_time = std::chrono::system_clock::to_time_t(now);
+	std::tm* time_info = std::localtime(&current_time);
+	if (time_info->tm_sec != m_lastTime.tm_sec //由低到高比较
+		|| time_info->tm_min != m_lastTime.tm_min
+		|| time_info->tm_hour != m_lastTime.tm_hour
+		|| time_info->tm_mday != m_lastTime.tm_mday
+		|| time_info->tm_mon != m_lastTime.tm_mon
+		|| time_info->tm_year != m_lastTime.tm_year)
+	{
+		m_lastTime.tm_sec = time_info->tm_sec; 
+		m_lastTime.tm_min = time_info->tm_min;
+		m_lastTime.tm_hour = time_info->tm_hour;
+		m_lastTime.tm_mday = time_info->tm_mday;
+		m_lastTime.tm_mon = time_info->tm_mon;
+		m_lastTime.tm_year = time_info->tm_year;
+
+		snprintf(m_szLastTime, 32, "%04d-%02d-%02d %02d:%02d:%02d",
+			m_lastTime.tm_year + 1900, m_lastTime.tm_mon + 1, m_lastTime.tm_mday,
+			m_lastTime.tm_hour, m_lastTime.tm_min, m_lastTime.tm_sec);
+	}
+
+	m_logStream << "[" << std::this_thread::get_id() << "]"
+		<< m_szLastTime << ":" << "." << std::setfill('0') << std::setw(3) << now_ms
+		<< strBufPtr << std::endl;
 }
 
 void mmrUtil::CLogger::LogFatal(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_FATAL, F);
+	LOG_BY_LEVEL(emLogLevel::LOG_FATAL);
 }
 
 void mmrUtil::CLogger::LogError(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_ERROR, E);
+	LOG_BY_LEVEL(emLogLevel::LOG_ERROR);
 }
 
 void mmrUtil::CLogger::LogWarn(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_WARN, W);
+	LOG_BY_LEVEL(emLogLevel::LOG_WARN);
 }
 
 void mmrUtil::CLogger::LogInfo(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_INFO, I);
+	LOG_BY_LEVEL(emLogLevel::LOG_INFO);
 }
 
 void mmrUtil::CLogger::LogDebug(const char *format, ...)
 {
-	LOG_BY_LEVEL(emLogLevel::LOG_DEBUG, D);
+	LOG_BY_LEVEL(emLogLevel::LOG_DEBUG);
 }
 
-std::fstream & mmrUtil::CLogger::LogByOstream(const char* logTag /*= ""*/)
-{
-	if (LogCheck(emLogLevel::LOG_FORCE))
-	{
-		auto now = std::chrono::system_clock::now(); 
-		auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000; 
-		std::time_t current_time = std::chrono::system_clock::to_time_t(now); 
-		std::tm* time_info = std::localtime(&current_time); 
-		m_logStream << "[" << std::this_thread::get_id() << "]"
-			<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2) << time_info->tm_mday
-			<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"
-			<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms
-			<< "[" << logTag << "]";
-
-	}
-	return m_logStream;
-}
+//std::fstream & mmrUtil::CLogger::LogByOstream(const char* logTag /*= ""*/)
+//{
+//	if (LogCheck(emLogLevel::LOG_FORCE))
+//	{
+//		auto now = std::chrono::system_clock::now(); 
+//		auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000; 
+//		std::time_t current_time = std::chrono::system_clock::to_time_t(now); 
+//		std::tm* time_info = std::localtime(&current_time); 
+//		m_logStream << "[" << std::this_thread::get_id() << "]"
+//			<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2) << time_info->tm_mday
+//			<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"
+//			<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms
+//			<< "[" << logTag << "]";
+//
+//	}
+//	return m_logStream;
+//}
 
 bool mmrUtil::CLogger::LogCheck(emLogLevel level)
 {

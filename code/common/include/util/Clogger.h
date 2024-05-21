@@ -19,6 +19,20 @@ enum class emLogLevel
 	LOG_DEBUG
 };
 
+
+class CBigBuff 
+{
+public:
+	CBigBuff() {};
+	~CBigBuff() {}
+
+private:
+
+	char* m_buf;
+	uint32_t m_ulLenl;//buf长度
+	uint32_t m_ulPos;//当前buf位置
+};
+
 class COMMON_CLASS_API CLogger
 {
 private:
@@ -46,8 +60,8 @@ public:
 	void LogInfo(const char *format, ...);
 	void LogDebug(const char *format, ...);
 
-	std::fstream &LogByOstream(const char* logTag = "");
-	std::mutex& getMutex() { return m_mutWrite; }
+	//std::fstream &LogByOstream(const char* logTag = "");
+	//std::mutex& getMutex() { return m_mutWrite; }
 	emLogLevel getLevel() { return m_LogLevel; }
 private:
 	bool LogCheck(emLogLevel level);
@@ -69,6 +83,9 @@ private:
 	std::fstream m_logStream;   //写文件流
 	std::mutex	m_mutWrite;  //进行客户端句柄存储修改时，线程锁
 
+	std::tm m_lastTime;//上一次日志时间
+	char m_szLastTime[32];//上一次时间字符串
+
 };
 
 END_NAMESPACE(mmrUtil)
@@ -76,63 +93,63 @@ END_NAMESPACE(mmrUtil)
 #define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
-   logInstancePtr->LogForce("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogForce("[O][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
-   logInstancePtr->LogFatal("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogFatal("[F][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-   logInstancePtr->LogError("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogError("[E][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_WARN(format, ...) \
-   logInstancePtr->LogWarn("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogWarn("[W][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-   logInstancePtr->LogInfo("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogInfo("[I][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_DEBUG(format, ...) \
-   logInstancePtr->LogDebug("[%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogDebug("[D][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
-//直接使用文件流输出
-#define LOGFORCE_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FORCE)\
-		logInstancePtr->LogByOstream("O") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
-
-#define LOGFATAL_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FATAL)\
-		logInstancePtr->LogByOstream("F") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
-
-#define LOGERROR_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_ERROR)\
-	logInstancePtr->LogByOstream("E") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
-
-#define LOGWARN_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_WARN)\
-	logInstancePtr->LogByOstream("W") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
-
-#define LOGINFO_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_INFO)\
-	logInstancePtr->LogByOstream("I") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
-
-#define LOGDEBUG_BYSTREAM(logInfo)\
-{\
-	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_DEBUG)\
-		logInstancePtr->LogByOstream("D") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-}
+////直接使用文件流输出
+//#define LOGFORCE_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FORCE)\
+//		logInstancePtr->LogByOstream("O") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
+//
+//#define LOGFATAL_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FATAL)\
+//		logInstancePtr->LogByOstream("F") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
+//
+//#define LOGERROR_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_ERROR)\
+//	logInstancePtr->LogByOstream("E") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
+//
+//#define LOGWARN_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_WARN)\
+//	logInstancePtr->LogByOstream("W") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
+//
+//#define LOGINFO_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_INFO)\
+//	logInstancePtr->LogByOstream("I") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
+//
+//#define LOGDEBUG_BYSTREAM(logInfo)\
+//{\
+//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
+//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_DEBUG)\
+//		logInstancePtr->LogByOstream("D") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
+//}
 #endif

@@ -21,9 +21,9 @@ int main()
 
 	for (int i = 0 ; i < 100 ; ++i)
 	{
-		logInstancePtr->LogForce("[%s][%d] log test i value is %lld!", __FUNCTION__, __LINE__, i);
-		LOG_INFO("log test i value is %lld!", i);
-		LOGWARN_BYSTREAM("log test i value is " << i);
+		LOG_FORCE("log test i value is %lld!", i);
+		LOG_DEBUG("log test i value is %lld!", i);
+		//LOGWARN_BYSTREAM("log test i value is " << i);
 		std::cout << "log test i value is " << i << std::endl;
 	}
 
