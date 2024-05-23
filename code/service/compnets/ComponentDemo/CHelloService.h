@@ -8,11 +8,11 @@ class CHelloService :public IHelloService
 public:
 	CHelloService()
 	{
-		std::cout << "CHelloService construct!" << std::endl;
+		//std::cout << "CHelloService construct!" << std::endl;
 	}
 	~CHelloService() 
 	{
-		std::cout << "CHelloService destruct!" << std::endl;
+		//std::cout << "CHelloService destruct!" << std::endl;
 	}
 
 	virtual void sayHello() override;

@@ -1,20 +1,19 @@
-#ifndef CCOMPONENTDEMO_H
-#define CCOMPONENTDEMO_H
+#ifndef CCOMPONENTACTIVATOR_H
+#define CCOMPONENTACTIVATOR_H
 #include "IComponent.h"
-#include "util/json.hpp"
 #include "CHandlerDemo.h"
 
-class CComponentDemo :public IComponent 
+class CComponentActivator :public IComponent 
 {
 public:
-	CComponentDemo();
-	virtual ~CComponentDemo() = default;
+	CComponentActivator();
+	virtual ~CComponentActivator() = default;
 
 	virtual uint16_t  getIndex() override;
 
 	virtual const char* getName() override;
 
-	virtual bool initialise(Json::Value& jsonConfig ) override;
+	virtual bool initialise(const Json::Value& jsonConfig) override;
 
 	virtual bool start() override;
 

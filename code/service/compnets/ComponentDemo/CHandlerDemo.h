@@ -14,23 +14,23 @@ public:
 	{
 
 		HANDLER_REGIST_TOPICS(std::vector<std::string>({"info1", "info2"}));
-		std::cout << "CHandlerDemo construct " << std::endl;
+		//std::cout << "CHandlerDemo construct " << std::endl;
 	}
 
 	~CHandlerDemo() {
 		HANDLER_REMOVE_TOPICS(std::vector<std::string>({ "info1", "info2" }));
-		std::cout << "CHandlerDemo destruct " << std::endl;
+		//std::cout << "CHandlerDemo destruct " << std::endl;
 	}
 
 	virtual void handleEvent(const mmrUtil::CVarDatas& varData) override 
 	{
 		if (varData.getName() == "info1")
 		{
-			std::cout << "CHandlerDemo deal data " << varData.getName() << std::endl;
+			//std::cout << "CHandlerDemo deal data " << varData.getName() << std::endl;
 		}
 		else if (varData.getName() == "info2")
 		{
-			std::cout << "CHandlerDemo deal data " << varData.getName() << std::endl;
+			//std::cout << "CHandlerDemo deal data " << varData.getName() << std::endl;
 		}
 	}
 private:

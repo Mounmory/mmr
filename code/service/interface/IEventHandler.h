@@ -13,14 +13,7 @@ public:
 };
 
 
-#define  HANDLER_REGIST_TOPICS(vecStr)\
-{\
-	std::vector<std::string> vecTopic = vecStr;\
-	for (const auto& iterTopic : vecTopic)\
-	{\
-		CoreFrameworkIns->addHandler(iterTopic, this);\
-	}\
-}
+
 
 #define  HANDLER_REGIST_TOPICS(vecStr)\
 {\

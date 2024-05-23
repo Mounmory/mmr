@@ -1,8 +1,9 @@
 #include "util/Clogger.h"
 #include "util/UtilFunc.h"
 #include <stdarg.h>
-#include <iostream>
+
 #include <iomanip> //std::setfill头文件
+
 
 #ifdef OS_WIN
 #include <corecrt_io.h>	//_access头文件
@@ -132,6 +133,16 @@ bool mmrUtil::CLogger::init(const std::string& strPath, const std::string& strNa
 
 bool mmrUtil::CLogger::start()
 {
+	//m_pBufDeal = std::make_unique<CBigBuff>(m_ulBigBufSize);
+
+	m_pBufWrite = std::make_unique<CBigBuff>(m_ulBigBufSize);
+
+	for (uint16_t i = 0; i < m_usBufEmptySize; ++i) 
+	{
+		m_queBufsEmpty.push(std::make_unique<CBigBuff>(m_ulBigBufSize));
+	}
+
+
 	if (m_strLogDir.empty() || m_strLogName.empty())
 	{
 		std::string logDir, logName;
@@ -154,12 +165,27 @@ bool mmrUtil::CLogger::start()
 		m_logStream.seekp(0, std::ios::end);
 	}
 
+	//启动处理线程
+	m_bRunning.store(true, std::memory_order_relaxed);
+	m_threadDeal = std::make_unique<std::thread>(&CLogger::dealThread, this);
+
 	LOG_FORCE("----------------- start -----------------");
 	return true;
 }
 
 void mmrUtil::CLogger::stop()
 {
+	//停掉线程
+	if (true == m_bRunning)
+	{
+		m_bRunning.store(false, std::memory_order_relaxed);//退出线程
+		m_cv.notify_all();
+		if (m_threadDeal->joinable())
+		{
+			m_threadDeal->join();//等待线程结束
+		}
+	}
+
 	if (m_logStream.is_open())
 	{
 		m_logStream.close();
@@ -169,27 +195,16 @@ void mmrUtil::CLogger::stop()
 void mmrUtil::CLogger::LogForce(const char *format, ...)
 {
 	//LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
-	static char* strBufPtr = nullptr;
-	std::lock_guard<std::mutex> guard(m_mutWrite);
-	if (LogCheck(emLogLevel::LOG_FORCE) == false)
+	if (m_LogLevel < emLogLevel::LOG_FORCE)
+	{
 		return;
-	va_list arglist;
-	va_start(arglist, format);
-	int strLen = vsnprintf(m_pBuf, m_lBufLen, format, arglist);
-	if (strLen > m_lBufLen && strLen < m_lBigBufLen)
-	{
-		vsnprintf(m_pBigBuf, m_lBigBufLen, format, arglist);
-		strBufPtr = &m_pBigBuf[0];
 	}
-	else
-	{
-		strBufPtr = &m_pBuf[0];
-	}
-	va_end(arglist);
 	auto now = std::chrono::system_clock::now();
 	auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
 	std::time_t current_time = std::chrono::system_clock::to_time_t(now);
 	std::tm* time_info = std::localtime(&current_time);
+
+	std::unique_lock<std::mutex> lock(m_mutWrite);
 	if (time_info->tm_sec != m_lastTime.tm_sec //由低到高比较
 		|| time_info->tm_min != m_lastTime.tm_min
 		|| time_info->tm_hour != m_lastTime.tm_hour
@@ -204,14 +219,40 @@ void mmrUtil::CLogger::LogForce(const char *format, ...)
 		m_lastTime.tm_mon = time_info->tm_mon;
 		m_lastTime.tm_year = time_info->tm_year;
 
-		snprintf(m_szLastTime, 32, "%04d-%02d-%02d %02d:%02d:%02d",
+		snprintf(m_szLastTime, sizeof(m_szLastTime), "%04d-%02d-%02d %02d:%02d:%02d ",
 			m_lastTime.tm_year + 1900, m_lastTime.tm_mon + 1, m_lastTime.tm_mday,
 			m_lastTime.tm_hour, m_lastTime.tm_min, m_lastTime.tm_sec);
 	}
+	//写入ms
 
-	m_logStream << "[" << std::this_thread::get_id() << "]"
-		<< m_szLastTime << ":" << "." << std::setfill('0') << std::setw(3) << now_ms
-		<< strBufPtr << std::endl;
+
+	if (m_pBufWrite->getTryAvailid() <= strlen(m_szLastTime))//字符长度不够了
+	{
+		updateBufWrite();
+		m_cv.notify_all();
+	}
+
+	m_pBufWrite->tryWrite(m_szLastTime, strlen(m_szLastTime));
+
+	va_list arglist;
+	va_start(arglist, format);
+	size_t weakAvilid = m_pBufWrite->getTryAvailid();
+	int strLen = vsnprintf(m_pBufWrite->getTryCurrent(), weakAvilid, format, arglist);
+	if (strLen > weakAvilid)
+	{
+		m_pBufWrite->clearTry();
+
+		updateBufWrite();
+
+		m_cv.notify_all();
+
+		m_pBufWrite->tryWrite(m_szLastTime, strlen(m_szLastTime));
+		//注意：若新数据的availid长度小于strLen，将导致后面addTryIncrease长度错误，但新建缓冲长度往往较大，几乎不可能出现，因此暂且不做长度判断
+		vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);
+	}
+	m_pBufWrite->addTryIncrease(strLen);
+	m_pBufWrite->doneTry();
+	va_end(arglist);
 }
 
 void mmrUtil::CLogger::LogFatal(const char *format, ...)
@@ -238,24 +279,6 @@ void mmrUtil::CLogger::LogDebug(const char *format, ...)
 {
 	LOG_BY_LEVEL(emLogLevel::LOG_DEBUG);
 }
-
-//std::fstream & mmrUtil::CLogger::LogByOstream(const char* logTag /*= ""*/)
-//{
-//	if (LogCheck(emLogLevel::LOG_FORCE))
-//	{
-//		auto now = std::chrono::system_clock::now(); 
-//		auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000; 
-//		std::time_t current_time = std::chrono::system_clock::to_time_t(now); 
-//		std::tm* time_info = std::localtime(&current_time); 
-//		m_logStream << "[" << std::this_thread::get_id() << "]"
-//			<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2) << time_info->tm_mday
-//			<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"
-//			<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms
-//			<< "[" << logTag << "]";
-//
-//	}
-//	return m_logStream;
-//}
 
 bool mmrUtil::CLogger::LogCheck(emLogLevel level)
 {
@@ -315,5 +338,55 @@ bool mmrUtil::CLogger::LogCheck(emLogLevel level)
 		m_logStream.open(m_strFilePath, std::fstream::app);
 	}
 	return true;
+}
+
+void mmrUtil::CLogger::dealThread()
+{
+	while (m_bRunning.load(std::memory_order_relaxed))
+	{
+		if (m_pBufWrite->getSize() > 0 || m_queBufsWrite.size() > 0)
+		{
+			{
+				std::unique_lock<std::mutex> lock(m_mutWrite);
+				updateBufWrite();
+				m_queBufsDeal = std::move(m_queBufsWrite);
+			}
+
+			while (m_queBufsDeal.size())
+			{
+				m_pBufDeal = std::move(m_queBufsDeal.front());
+				m_queBufsDeal.pop();
+				std::cout << "log write!" << std::endl;
+				m_logStream << m_pBufDeal->getBuf();
+				m_logStream.flush();
+				m_pBufDeal->clear();
+
+				{
+					std::unique_lock<std::mutex> lock(m_mutWrite);
+					m_queBufsEmpty.push(std::move(m_pBufDeal));
+				}
+			}
+		}
+
+		{
+			std::unique_lock<std::mutex> lock(m_mutWrite);
+			m_cv.wait_for(lock, std::chrono::milliseconds(100000));
+		}
+	}
+}
+
+void mmrUtil::CLogger::updateBufWrite()
+{
+	m_queBufsWrite.push(std::move(m_pBufWrite));
+	if (m_queBufsEmpty.size())
+	{
+		m_pBufWrite = std::move(m_queBufsEmpty.front());
+		m_queBufsEmpty.pop();
+	}
+	else
+	{
+		//是否新增缓冲区标记
+		m_pBufWrite = std::make_unique<CBigBuff>(m_ulBigBufSize);
+	}
 }
 

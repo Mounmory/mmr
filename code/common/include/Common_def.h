@@ -16,18 +16,23 @@
 #define OUT
 
 #ifdef OS_LINUX//定义函数宏
-#include <string>
-static std::string _CutParenthesesNTail(std::string&& prettyFuncon)
-{
-	auto pos = prettyFuncon.find('(');
-	if (pos != std::string::npos)
-		prettyFuncon.erase(prettyFuncon.begin() + pos, prettyFuncon.end());
-	pos = prettyFuncon.find(' ');
-	if (pos != std::string::npos)//删除返回类型
-		prettyFuncon.erase(prettyFuncon.begin(), prettyFuncon.begin() + pos + 1);
-	return std::move(prettyFuncon);
-}
-#define __FUNCTION__ _CutParenthesesNTail(__PRETTY_FUNCTION__).c_str()
+//#include <string>
+//static std::string _CutParenthesesNTail(std::string&& prettyFuncon)
+//{
+//	auto pos = prettyFuncon.find('(');
+//	if (pos != std::string::npos)
+//		prettyFuncon.erase(prettyFuncon.begin() + pos, prettyFuncon.end());
+//	pos = prettyFuncon.find(' ');
+//	if (pos != std::string::npos)//删除返回类型
+//		prettyFuncon.erase(prettyFuncon.begin(), prettyFuncon.begin() + pos + 1);
+//	return std::move(prettyFuncon);
+//}
+//#define __FUNCTION__ _CutParenthesesNTail(__PRETTY_FUNCTION__).c_str()
+#endif
+
+#ifndef __FILENAME__
+// #define __FILENAME__  (strrchr(__FILE__, DIR_SEPARATOR) ? strrchr(__FILE__, DIR_SEPARATOR) + 1 : __FILE__)
+#define __FILENAME__  (strrchr(DIR_SEPARATOR_STR __FILE__, DIR_SEPARATOR) + 1)
 #endif
 
 #include <chrono>

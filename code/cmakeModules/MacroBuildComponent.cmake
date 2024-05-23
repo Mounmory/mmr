@@ -18,8 +18,11 @@ MACRO(build_service_component targetName)
 		"${CMAKE_SOURCE_DIR}/common/include/*.h")
 	source_group("common" FILES ${COPM_COMMON_HEADS})
 
+	file(GLOB COPM_INTERFACE_COMMON_HEADS 
+		"${CMAKE_SOURCE_DIR}/service/interface/*.h")
+	source_group("common/interface" FILES ${COPM_INTERFACE_COMMON_HEADS})
+	
 	file(GLOB COPM_INTERFACE_HEADS 
-		"${CMAKE_SOURCE_DIR}/service/interface/*.h"
 		"${CMAKE_SOURCE_DIR}/service/interface/iservice/${targetName}/*.h")
 	source_group("interface" FILES ${COPM_INTERFACE_HEADS})
 
@@ -36,6 +39,7 @@ MACRO(build_service_component targetName)
 	# 增加动态链接库
 	add_library(${targetName} SHARED
 		${COPM_COMMON_HEADS}
+		${COPM_INTERFACE_COMMON_HEADS}
 		${COPM_INTERFACE_HEADS}
 		${COPM_HEADS}
 		${COPM_SOURCE})

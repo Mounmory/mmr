@@ -34,28 +34,28 @@ int main()
 		return -1;
 	}
 
-	cout<< "obj1 before move\n" << obj1 << endl;
+	cout<< "obj1 before move\n" << obj1.dump() << endl;
 
 	std::cout << "dump json \n" << obj1.dump() << std::endl;
 
 	Value obj2 = std::move(obj1);
-	cout << "obj2 after move\n" << obj2 << endl;
-	cout << "obj1 after move\n" << obj1 << endl;
+	cout << "obj2 after move\n" << obj2.dump() << endl;
+	cout << "obj1 after move\n" << obj1.dump() << endl;
 	obj1 = std::move(obj2);
-	cout << "obj2 after move\n" << obj2 << endl;
-	cout << "obj1 after move\n" << obj1 << endl;
+	cout << "obj2 after move\n" << obj2.dump() << endl;
+	cout << "obj1 after move\n" << obj1.dump() << endl;
 
 	ofstream output1;
 	output1.open(strJsonIn, std::ofstream::out);
 	if (output1.is_open())
 	{
-		output1 << obj1 << std::endl;
+		output1 << obj1.dump() << std::endl;
 	}
 
 	//дJson
-	Value Obj = Json::Object();
-	Value Obj1 = Json::Object();
-	Value Obj11 = Json::Object();
+	Value Obj = Json::Value();
+	Value Obj1 = Json::Value();
+	Value Obj11 = Json::Value();
 
 	Obj11["para1"] = 1;
 	Obj1["ComponentDemo"] = Obj11;
@@ -78,13 +78,13 @@ int main()
 
 
 	// Dump Obj to a string.
-	cout << Obj << endl;
+	cout << Obj.dump() << endl;
 
 	ofstream output;
 	output.open(strJsonOut,std::ofstream::out);
 	if (output.is_open())
 	{
-		output << Obj << std::endl;
+		output << Obj.dump() << std::endl;
 		output.close();
 	}
 

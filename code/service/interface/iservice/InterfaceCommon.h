@@ -1,4 +1,5 @@
 ﻿#ifndef IINTERFACECOMMON_H
+#define IINTERFACECOMMON_H
 
 //定义接口生成GUID函数
 #define INTERFACE_GUID_DEFINE() \
@@ -9,6 +10,6 @@ public:\
 		return strGUID;\
 	}
 
-#define IINTERFACECOMMON_H
+
 #endif
 

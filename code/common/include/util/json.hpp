@@ -2,8 +2,6 @@
 #ifndef JSON_HPP
 #define JSON_HPP
 
-
-#include "Common_def.h"
 #include "util/UtilExport.h"
 
 #include <cstdint>
@@ -50,6 +48,7 @@ namespace {
 		return std::move(output);
 	}
 }
+
 
 class Value
 {
@@ -207,8 +206,6 @@ public:
 		Value ret; ret.SetType(type);
 		return ret;
 	}
-
-	static std::string Load(const string &str, Value& jsonRoot);
 
 	template <typename T>
 	void append(T arg) {
@@ -385,7 +382,7 @@ public:
 		return "";
 	}
 
-	friend std::ostream& operator<<(std::ostream&, const Value &);
+	//friend std::ostream& operator<<(std::ostream&, const Value &);
 
 private:
 	void SetType(emJsonType type) {
@@ -426,10 +423,6 @@ private:
 	emJsonType Type = emJsonType::Null;
 };
 
-Value Array() {
-	return std::move(Value::Make(Value::emJsonType::Array));
-}
-
 template <typename... T>
 Value Array(T... args) {
 	Value arr = Value::Make(Value::emJsonType::Array);
@@ -437,14 +430,10 @@ Value Array(T... args) {
 	return std::move(arr);
 }
 
-Value Object() {
-	return std::move(Value::Make(Value::emJsonType::Object));
-}
-
-std::ostream& operator<<(std::ostream &os, const Value &json) {
-	os << json.dump();
-	return os;
-}
+//std::ostream& operator<<(std::ostream &os, const Value &json) {
+//	os << json.dump();
+//	return os;
+//}
 
 namespace {
 	Value parse_next(const string &, size_t &);
@@ -671,9 +660,50 @@ namespace {
 		return Value();
 	}
 
-	std::string json_from_file(const std::string& strFile,Value& jsRoot) {
+	std::string Load(const string &str, Value& jsonRoot)
+	{
+		size_t offset = 0;
+		std::string strErr;
+		try
+		{
+			jsonRoot = parse_next(str, offset);
+		}
+		catch (const std::exception& e)
+		{
+			strErr = e.what();
+			uint32_t rowNum = 0;
+			uint32_t colNum = 0;
+			if (offset > 0)
+			{
+				size_t posLineEnd = 0;//记录最后一个回车的offset
+				do
+				{
+					auto poslastEnd = str.find_first_of('\n', posLineEnd);
+					if (poslastEnd != std::string::npos) {
+						++poslastEnd;
+						++rowNum;
+						if (poslastEnd > offset) {
+							colNum = offset - posLineEnd + 1;
+							break;
+						}
+						else
+							posLineEnd = poslastEnd;
+					}
+					else {
+						colNum = offset - posLineEnd + 1;
+						break;
+					}
+
+				} while (posLineEnd < offset);
+			}
+			strErr = strErr + "row:" + std::to_string(rowNum) + " col:" + std::to_string(colNum);
+		}
+		return strErr;
+	}
+
+	std::string json_from_file(const std::string& strFile, Value& jsRoot) {
 		std::string retStr;
-		do 
+		do
 		{
 			string contents;
 			ifstream input(strFile);
@@ -689,54 +719,13 @@ namespace {
 			contents.assign((std::istreambuf_iterator<char>(input)),
 				std::istreambuf_iterator<char>());
 
-			retStr = Value::Load(contents, jsRoot);
+			retStr = Load(contents, jsRoot);
 
 		} while (false);
 
 		return retStr;
 	}
 }
-
-std::string Value::Load(const string &str, Value& jsonRoot) {
-	size_t offset = 0;
-	std::string strErr;
-	try
-	{
-		jsonRoot = parse_next(str, offset);
-	}
-	catch (const std::exception& e)
-	{
-		strErr = e.what();
-		uint32_t rowNum = 0;
-		uint32_t colNum = 0;
-		if (offset > 0)
-		{
-			size_t posLineEnd = 0;//记录最后一个回车的offset
-			do 
-			{
-				auto poslastEnd = str.find_first_of('\n', posLineEnd);
-				if (poslastEnd != std::string::npos){
-					++poslastEnd;
-					++rowNum;
-					if (poslastEnd > offset){
-						colNum = offset - posLineEnd + 1;
-						break;
-					}
-					else
-						posLineEnd = poslastEnd;
-				}
-				else{
-					colNum = offset - posLineEnd  + 1;
-					break;
-				}
-
-			} while (posLineEnd < offset);
-		}
-		strErr = strErr + "row:" + std::to_string(rowNum) + " col:" + std::to_string(colNum);
-	}
-	return strErr;
-}
-
-END_NAMESPACE(mmrUtil)
+END_NAMESPACE(Json)
 
 #endif // !JSON_HPP

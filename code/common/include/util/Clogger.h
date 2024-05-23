@@ -3,8 +3,27 @@
 #include "Common_def.h"
 #include "util/UtilExport.h"
 #include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <memory>
 #include <fstream>
+#include <string.h>
+#include <iostream>
+#include <queue>
 
+#if defined(OS_WIN)  
+#include <windows.h>  
+#define THREAD_ID GetCurrentThreadId()
+
+#elif defined(OS_LINUX)  
+#include <pthread.h>  
+#include <unistd.h>  
+#include <sys/syscall.h>  
+#define THREAD_ID syscall(SYS_gettid)
+
+#else
+error os
+#endif  
 
 BEGINE_NAMESPACE(mmrUtil)
 
@@ -23,14 +42,72 @@ enum class emLogLevel
 class CBigBuff 
 {
 public:
-	CBigBuff() {};
-	~CBigBuff() {}
+	CBigBuff() = delete;
+	CBigBuff(CBigBuff&) = delete;
+	CBigBuff(CBigBuff&&) = delete;
+
+	CBigBuff(uint32_t ulLen)
+		: m_buf(new char[ulLen])
+		, m_ulLen(ulLen - 1)//长度-1，避免添加换行符越界
+		, m_ulPos(0)
+		, m_usTryIncrease(0)
+	{
+		if (!ulLen)
+		{
+			std::cerr << "CBigBuff construct init size is zero!" << std::endl;
+		}
+	};
+
+	~CBigBuff() 
+	{
+		delete[] m_buf;
+	}
+
+	void tryWrite(char* buf, uint16_t len) 
+	{
+		memcpy(m_buf + m_ulPos, buf, len);
+		m_usTryIncrease += len;
+	}
+
+	void doneTry() {
+		m_ulPos += m_usTryIncrease;
+		m_usTryIncrease = 0;
+		m_buf[m_ulPos++] = '\n';//加个换行符，pos+1
+		m_buf[m_ulPos] = 0x00;
+	}
+
+	void clearTry() 
+	{ 
+		m_usTryIncrease = 0;
+		m_buf[m_ulPos] = 0x00;
+	}
+
+	uint32_t getTryAvailid() { return (m_ulLen - m_ulPos - m_usTryIncrease); }
+
+	char* getTryCurrent() { return (m_buf + m_ulPos + m_usTryIncrease); }
+
+	void addTryIncrease(uint16_t weakLen) { m_usTryIncrease += weakLen; }
+
+	void clear() {
+		m_ulPos = 0; 
+		m_usTryIncrease = 0;
+	}
+
+	//最后一位自动置空
+	//void zeroEnd() { m_buf[m_ulPos] = 0x00; }//zeroEnd函数Pos不后移，避免继续写内容断掉
+
+	char* getBuf() { return m_buf; }
+
+	uint32_t getMaxLen() { return m_ulLen; }
+
+	uint32_t getSize() { return m_ulPos; }
+
 
 private:
-
 	char* m_buf;
-	uint32_t m_ulLenl;//buf长度
+	uint32_t m_ulLen;//buf长度
 	uint32_t m_ulPos;//当前buf位置
+	uint32_t m_usTryIncrease;
 };
 
 class COMMON_CLASS_API CLogger
@@ -66,6 +143,9 @@ public:
 private:
 	bool LogCheck(emLogLevel level);
 
+	void dealThread();
+
+	void updateBufWrite();
 private:
 	emLogLevel m_LogLevel;
 	const uint16_t m_lBufLen;
@@ -81,7 +161,21 @@ private:
 	std::string m_strFilePath; //输出文件全路径
 
 	std::fstream m_logStream;   //写文件流
+
+	
+	std::unique_ptr<CBigBuff> m_pBufWrite;//写
+	std::unique_ptr<CBigBuff> m_pBufDeal;//写
+	std::queue<std::unique_ptr<CBigBuff>> m_queBufsWrite;
+	std::queue<std::unique_ptr<CBigBuff>> m_queBufsDeal;
+	std::queue<std::unique_ptr<CBigBuff>> m_queBufsEmpty;
+	uint16_t m_usBufEmptySize = 3;
+	uint32_t m_ulBigBufSize = 200;
+
 	std::mutex	m_mutWrite;  //进行客户端句柄存储修改时，线程锁
+	std::condition_variable m_cv;
+	std::unique_ptr<std::thread> m_threadDeal;
+	std::atomic_bool m_bRunning;
+
 
 	std::tm m_lastTime;//上一次日志时间
 	char m_szLastTime[32];//上一次时间字符串
@@ -93,7 +187,7 @@ END_NAMESPACE(mmrUtil)
 #define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
-   logInstancePtr->LogForce("[O][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogForce("[%d][O][%s][%d]" format,THREAD_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
    logInstancePtr->LogFatal("[F][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
@@ -110,46 +204,4 @@ END_NAMESPACE(mmrUtil)
 #define LOG_DEBUG(format, ...) \
    logInstancePtr->LogDebug("[D][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
-////直接使用文件流输出
-//#define LOGFORCE_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FORCE)\
-//		logInstancePtr->LogByOstream("O") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
-//
-//#define LOGFATAL_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_FATAL)\
-//		logInstancePtr->LogByOstream("F") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
-//
-//#define LOGERROR_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_ERROR)\
-//	logInstancePtr->LogByOstream("E") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
-//
-//#define LOGWARN_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_WARN)\
-//	logInstancePtr->LogByOstream("W") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
-//
-//#define LOGINFO_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_INFO)\
-//	logInstancePtr->LogByOstream("I") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
-//
-//#define LOGDEBUG_BYSTREAM(logInfo)\
-//{\
-//	std::lock_guard<std::mutex> lockLog(logInstancePtr->getMutex());\
-//	if (logInstancePtr->getLevel() >= mmrUtil::emLogLevel::LOG_DEBUG)\
-//		logInstancePtr->LogByOstream("D") << "[" << __FUNCTION__ << "][" <<__LINE__ << "]" << logInfo <<std::endl;\
-//}
 #endif

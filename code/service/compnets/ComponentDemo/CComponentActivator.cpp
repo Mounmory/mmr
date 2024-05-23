@@ -1,26 +1,26 @@
-#include "CComponentDemo.h"
+#include "CComponentActivator.h"
 #include "CCompFramework.h"
 #include "CHelloService.h"
 
-REGIST_COMPONENT(CComponentDemo);
+REGIST_COMPONENT(CComponentActivator);
 
-CComponentDemo::CComponentDemo()
+CComponentActivator::CComponentActivator()
 {
 	
 }
 
-uint16_t CComponentDemo::getIndex()
+uint16_t CComponentActivator::getIndex()
 {
-	return 1;
+	return 0;
 }
 
-const char* CComponentDemo::getName()
+const char* CComponentActivator::getName()
 {
 	static const char* szName = "ComponentDemo";
 	return szName;
 }
 
-bool CComponentDemo::initialise(Json::Value& jsonConfig)
+bool CComponentActivator::initialise(const Json::Value& jsonConfig)
 {
 	std::shared_ptr<IHelloService> serPtr = std::make_shared<CHelloService>();
 	CoreFrameworkIns->registService<IHelloService>(std::move(serPtr));
@@ -31,12 +31,12 @@ bool CComponentDemo::initialise(Json::Value& jsonConfig)
 	return true;
 }
 
-bool CComponentDemo::start()
+bool CComponentActivator::start()
 {
 	return true;
 }
 
-void CComponentDemo::stop()
+void CComponentActivator::stop()
 {
 
 }
