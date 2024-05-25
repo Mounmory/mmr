@@ -13,7 +13,7 @@
 
 #if defined(OS_WIN)  
 #include <windows.h>  
-#define THREAD_ID GetCurrentThreadId()
+#define Thread_ID GetCurrentThreadId()
 
 #elif defined(OS_LINUX)  
 #include <pthread.h>  
@@ -48,7 +48,7 @@ public:
 
 	CBigBuff(uint32_t ulLen)
 		: m_buf(new char[ulLen])
-		, m_ulLen(ulLen - 1)//长度-1，避免添加换行符越界
+		, m_ulLen(ulLen - 1)//长度-1，避免添最后一位置空越界
 		, m_ulPos(0)
 		, m_usTryIncrease(0)
 	{
@@ -72,8 +72,6 @@ public:
 	void doneTry() {
 		m_ulPos += m_usTryIncrease;
 		m_usTryIncrease = 0;
-		m_buf[m_ulPos++] = '\n';//加个换行符，pos+1
-		m_buf[m_ulPos] = 0x00;
 	}
 
 	void clearTry() 
@@ -92,9 +90,6 @@ public:
 		m_ulPos = 0; 
 		m_usTryIncrease = 0;
 	}
-
-	//最后一位自动置空
-	//void zeroEnd() { m_buf[m_ulPos] = 0x00; }//zeroEnd函数Pos不后移，避免继续写内容断掉
 
 	char* getBuf() { return m_buf; }
 
@@ -130,6 +125,8 @@ public:
 	bool start();
 	void stop();
 
+	void logWrite(const char *format, ...);
+
 	void LogForce(const char *format, ...);
 	void LogFatal(const char *format, ...);
 	void LogError(const char *format, ...);
@@ -146,6 +143,8 @@ private:
 	void dealThread();
 
 	void updateBufWrite();
+
+	void fileSizeCheck();//检查文件大小
 private:
 	emLogLevel m_LogLevel;
 	const uint16_t m_lBufLen;
@@ -160,7 +159,7 @@ private:
 	std::string m_strLogName; //文件路径
 	std::string m_strFilePath; //输出文件全路径
 
-	std::fstream m_logStream;   //写文件流
+	std::fstream m_logStream;   //写文件流,后续考虑使用更高效的文件流
 
 	
 	std::unique_ptr<CBigBuff> m_pBufWrite;//写
@@ -169,7 +168,7 @@ private:
 	std::queue<std::unique_ptr<CBigBuff>> m_queBufsDeal;
 	std::queue<std::unique_ptr<CBigBuff>> m_queBufsEmpty;
 	uint16_t m_usBufEmptySize = 3;
-	uint32_t m_ulBigBufSize = 200;
+	uint32_t m_ulBigBufSize = 1024 * 1024;
 
 	std::mutex	m_mutWrite;  //进行客户端句柄存储修改时，线程锁
 	std::condition_variable m_cv;
@@ -187,7 +186,7 @@ END_NAMESPACE(mmrUtil)
 #define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
-   logInstancePtr->LogForce("[%d][O][%s][%d]" format,THREAD_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->logWrite("[%d][O][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
    logInstancePtr->LogFatal("[F][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)

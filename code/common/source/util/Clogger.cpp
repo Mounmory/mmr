@@ -14,7 +14,7 @@
 #include <unistd.h>
 #endif
 
-#define MAX_FILE_SIZE 4*1024*1024
+#define MAX_FILE_SIZE 16*1024*1024
 //#define MAX_FILE_SIZE 100
 
 #define LOG_BY_LEVEL(logLevel)\
@@ -192,13 +192,9 @@ void mmrUtil::CLogger::stop()
 	}
 }
 
-void mmrUtil::CLogger::LogForce(const char *format, ...)
+
+void mmrUtil::CLogger::logWrite(const char *format, ...)
 {
-	//LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
-	if (m_LogLevel < emLogLevel::LOG_FORCE)
-	{
-		return;
-	}
 	auto now = std::chrono::system_clock::now();
 	auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
 	std::time_t current_time = std::chrono::system_clock::to_time_t(now);
@@ -212,27 +208,27 @@ void mmrUtil::CLogger::LogForce(const char *format, ...)
 		|| time_info->tm_mon != m_lastTime.tm_mon
 		|| time_info->tm_year != m_lastTime.tm_year)
 	{
-		m_lastTime.tm_sec = time_info->tm_sec; 
+		m_lastTime.tm_sec = time_info->tm_sec;
 		m_lastTime.tm_min = time_info->tm_min;
 		m_lastTime.tm_hour = time_info->tm_hour;
 		m_lastTime.tm_mday = time_info->tm_mday;
 		m_lastTime.tm_mon = time_info->tm_mon;
 		m_lastTime.tm_year = time_info->tm_year;
 
-		snprintf(m_szLastTime, sizeof(m_szLastTime), "%04d-%02d-%02d %02d:%02d:%02d ",
+		snprintf(m_szLastTime, sizeof(m_szLastTime), "%04d-%02d-%02d %02d:%02d:%02d",
 			m_lastTime.tm_year + 1900, m_lastTime.tm_mon + 1, m_lastTime.tm_mday,
 			m_lastTime.tm_hour, m_lastTime.tm_min, m_lastTime.tm_sec);
 	}
-	//写入ms
 
-
-	if (m_pBufWrite->getTryAvailid() <= strlen(m_szLastTime))//字符长度不够了
+	if (m_pBufWrite->getTryAvailid() <= 50)//字符长度不够了
 	{
 		updateBufWrite();
 		m_cv.notify_all();
 	}
 
-	m_pBufWrite->tryWrite(m_szLastTime, strlen(m_szLastTime));
+	//写入时间
+	snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);
+	m_pBufWrite->addTryIncrease(24);
 
 	va_list arglist;
 	va_start(arglist, format);
@@ -246,13 +242,20 @@ void mmrUtil::CLogger::LogForce(const char *format, ...)
 
 		m_cv.notify_all();
 
-		m_pBufWrite->tryWrite(m_szLastTime, strlen(m_szLastTime));
-		//注意：若新数据的availid长度小于strLen，将导致后面addTryIncrease长度错误，但新建缓冲长度往往较大，几乎不可能出现，因此暂且不做长度判断
+		snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);
+		m_pBufWrite->addTryIncrease(24);
+		//若新数据的availid长度小于strLen，将导致后面addTryIncrease长度错误，但新建缓冲长度往往较大，几乎不可能出现，因此暂且不做长度判断
 		vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);
 	}
 	m_pBufWrite->addTryIncrease(strLen);
 	m_pBufWrite->doneTry();
 	va_end(arglist);
+}
+
+
+void mmrUtil::CLogger::LogForce(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
 }
 
 void mmrUtil::CLogger::LogFatal(const char *format, ...)
@@ -356,10 +359,12 @@ void mmrUtil::CLogger::dealThread()
 			{
 				m_pBufDeal = std::move(m_queBufsDeal.front());
 				m_queBufsDeal.pop();
-				std::cout << "log write!" << std::endl;
+				//std::cout << "log write!" << std::endl;
 				m_logStream << m_pBufDeal->getBuf();
 				m_logStream.flush();
 				m_pBufDeal->clear();
+
+				fileSizeCheck();
 
 				{
 					std::unique_lock<std::mutex> lock(m_mutWrite);
@@ -370,7 +375,7 @@ void mmrUtil::CLogger::dealThread()
 
 		{
 			std::unique_lock<std::mutex> lock(m_mutWrite);
-			m_cv.wait_for(lock, std::chrono::milliseconds(100000));
+			m_cv.wait_for(lock, std::chrono::milliseconds(1000));
 		}
 	}
 }
@@ -386,7 +391,54 @@ void mmrUtil::CLogger::updateBufWrite()
 	else
 	{
 		//是否新增缓冲区标记
+		std::cout << " warning! log buf empty queue is empty!" << std::endl;
 		m_pBufWrite = std::make_unique<CBigBuff>(m_ulBigBufSize);
+	}
+}
+
+void mmrUtil::CLogger::fileSizeCheck()
+{
+	if (m_logStream.tellp() > m_fileSize)//文件大于最大文件大小
+	{
+		//修改文件名称
+		m_logStream.close();
+
+		std::string strOldName; //旧名称
+		std::string strNewName; //新名称
+		int32_t nLogNumIndex = m_fileNum;
+		strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex); //最大序号的日志
+#ifdef OS_WIN
+		if (_access(strNewName.c_str(), 0) != -1)
+		{
+			remove(strNewName.c_str()); //删除
+		}
+		while (--nLogNumIndex > 0) //减小序号，以此更改日志名称
+		{
+			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
+			if (_access(strOldName.c_str(), 0) != -1) //检查文件夹是否存在，不存在则创建
+			{
+				rename(strOldName.c_str(), strNewName.c_str()); //删除
+			}
+			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
+		}
+
+#elif defined OS_LINUX
+		if (access(strNewName.c_str(), 0) == F_OK)                                                 //检查文件夹是否存在，不存在则创建
+		{
+			remove(strNewName.c_str()); //删除
+		}
+		while (--nLogNumIndex > 0) //减小序号，以此更改日志名称
+		{
+			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
+			if (access(strOldName.c_str(), 0) == F_OK) //检查文件夹是否存在，不存在则创建
+			{
+				rename(strOldName.c_str(), strNewName.c_str()); //删除
+			}
+			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
+		}
+#endif
+		rename(m_strFilePath.c_str(), strNewName.c_str()); //重命名
+		m_logStream.open(m_strFilePath, std::fstream::app);
 	}
 }
 
