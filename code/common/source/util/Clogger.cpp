@@ -14,7 +14,7 @@
 #include <unistd.h>
 #endif
 
-#define MAX_FILE_SIZE 16*1024*1024
+#define MAX_FILE_SIZE 64*1024*1024
 //#define MAX_FILE_SIZE 100
 
 #define LOG_BY_LEVEL(logLevel)\
