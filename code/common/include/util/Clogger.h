@@ -1,5 +1,5 @@
 ﻿#ifndef CLOGGER_H
-#define CLOGGET_H
+#define CLOGGER_H
 #include "Common_def.h"
 #include "util/UtilExport.h"
 #include <mutex>
@@ -11,33 +11,18 @@
 #include <iostream>
 #include <queue>
 
-#if defined(OS_WIN)  
-#include <windows.h>  
-#define Thread_ID GetCurrentThreadId()
-
-#elif defined(OS_LINUX)  
-#include <pthread.h>  
-#include <unistd.h>  
-#include <sys/syscall.h>  
-#define THREAD_ID syscall(SYS_gettid)
-
-#else
-error os
-#endif  
-
 BEGINE_NAMESPACE(mmrUtil)
 
-enum class emLogLevel
-{
-	LOG_OFF = -1,
-	LOG_FORCE = 0,
-	LOG_FATAL,
-	LOG_ERROR,
-	LOG_WARN,
-	LOG_INFO,
-	LOG_DEBUG
-};
-
+	enum class emLogLevel
+	{
+		Log_Off = -1,
+		Log_Forece = 0,
+		Log_Fatal,
+		Log_Error,
+		Log_Warn,
+		Log_Info,
+		Log_Debug
+	};
 
 class CBigBuff 
 {
@@ -52,9 +37,9 @@ public:
 		, m_ulPos(0)
 		, m_usTryIncrease(0)
 	{
-		if (!ulLen)
+		if (ulLen < 2048)
 		{
-			std::cerr << "CBigBuff construct init size is zero!" << std::endl;
+			std::cerr << "[" << __FUNCTION__ << "][" << __LINE__ << "CBigBuff construct init size is less than 2048!" << std::endl;
 		}
 	};
 
@@ -125,8 +110,6 @@ public:
 	bool start();
 	void stop();
 
-	void logWrite(const char *format, ...);
-
 	void LogForce(const char *format, ...);
 	void LogFatal(const char *format, ...);
 	void LogError(const char *format, ...);
@@ -134,12 +117,11 @@ public:
 	void LogInfo(const char *format, ...);
 	void LogDebug(const char *format, ...);
 
-	//std::fstream &LogByOstream(const char* logTag = "");
-	//std::mutex& getMutex() { return m_mutWrite; }
 	emLogLevel getLevel() { return m_LogLevel; }
-private:
-	bool LogCheck(emLogLevel level);
 
+	//使用双缓冲队列写日志接口
+	void logWrite(const char *format, ...);
+private:
 	void dealThread();
 
 	void updateBufWrite();
@@ -147,10 +129,6 @@ private:
 	void fileSizeCheck();//检查文件大小
 private:
 	emLogLevel m_LogLevel;
-	const uint16_t m_lBufLen;
-	const uint16_t m_lBigBufLen;
-	char* m_pBuf;
-	char* m_pBigBuf;
 
 	uint32_t m_fileNum;
 	uint64_t m_fileSize;
@@ -161,7 +139,6 @@ private:
 
 	std::fstream m_logStream;   //写文件流,后续考虑使用更高效的文件流
 
-	
 	std::unique_ptr<CBigBuff> m_pBufWrite;//写
 	std::unique_ptr<CBigBuff> m_pBufDeal;//写
 	std::queue<std::unique_ptr<CBigBuff>> m_queBufsWrite;
@@ -175,32 +152,80 @@ private:
 	std::unique_ptr<std::thread> m_threadDeal;
 	std::atomic_bool m_bRunning;
 
-
 	std::tm m_lastTime;//上一次日志时间
 	char m_szLastTime[32];//上一次时间字符串
-
 };
+
+
+struct LogWrapper 
+{
+	emLogLevel logLevel = emLogLevel::Log_Debug;
+	CLogger* loger = CLogger::getLogger();
+};
+
+
 
 END_NAMESPACE(mmrUtil)
 
+
+#if MMR_LOGGER_WRAP//使用日志封装，每个模块单独控制日志等级
+#define logInstancePtr mmrUtil::CLogger::getLogger()
+extern std::shared_ptr<mmrUtil::LogWrapper> g_LoggerPtr;
+
+#define LOG_FORCE(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Forece)\
+   g_LoggerPtr->loger->logWrite("[%d][A][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_FATAL(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Fatal)\
+   g_LoggerPtr->loger->logWrite("[%d][F][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_ERROR(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Error)\
+   g_LoggerPtr->loger->logWrite("[%d][E][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_ERROR_PRINT(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Error)\
+   g_LoggerPtr->loger->logWrite("[%d][A][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)\
+	,printf("[%d][A][%s][%d]" format "\n", Thread_ID, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+#define LOG_WARN(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Warn)\
+   g_LoggerPtr->loger->logWrite("[%d][W][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_INFO(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Info)\
+   g_LoggerPtr->loger->logWrite("[%d][I][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_DEBUG(format, ...) \
+if(g_LoggerPtr->logLevel >= mmrUtil::emLogLevel::Log_Debug)\
+   g_LoggerPtr->loger->logWrite("[%d][D][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#else
 #define logInstancePtr mmrUtil::CLogger::getLogger()
 
 #define LOG_FORCE(format, ...) \
-   logInstancePtr->logWrite("[%d][O][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogForce("[%d][A][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(format, ...) \
-   logInstancePtr->LogFatal("[F][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogFatal("[%d][F][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_ERROR(format, ...) \
-   logInstancePtr->LogError("[E][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogError("[%d][E][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+
+#define LOG_ERROR_PRINT(format, ...) \
+	logInstancePtr->LogError("[%d][E][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__);\
+   printf("[%d][A][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_WARN(format, ...) \
-   logInstancePtr->LogWarn("[W][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogWarn("[%d][W][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_INFO(format, ...) \
-   logInstancePtr->LogInfo("[I][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogInfo("[%d][I][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
 
 #define LOG_DEBUG(format, ...) \
-   logInstancePtr->LogDebug("[D][%s][%d]" format, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+   logInstancePtr->LogDebug("[%d][D][%s][%d]" format "\n",Thread_ID, __FUNCTION__,__LINE__, ##__VA_ARGS__)
+#endif
+
 
 #endif

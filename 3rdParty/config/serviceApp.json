@@ -1,3 +1,13 @@
 {
-	
+	"Components" :
+	{
+		"AppController":
+		{
+			"LogLevel":4
+		},
+		"ComponentDemo" :
+		{
+			"LogLevel":5
+		}
+	}
 }

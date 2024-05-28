@@ -10,6 +10,20 @@ std::shared_mutex mutex;
 int shared_data = 0;
 #endif
 
+#define PRINT_LOG(log) \
+	{\
+	auto now = std::chrono::system_clock::now(); \
+	auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;\
+	std::time_t current_time = std::chrono::system_clock::to_time_t(now);\
+	std::tm* time_info = std::localtime(&current_time);\
+	std::cout << "[" << Thread_ID << "]"\
+	<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2)<< time_info->tm_mday\
+	<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"\
+	<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms\
+	<< log << std::endl;\
+	}
+
+
 void read_data() 
 {
 #ifdef OS_WIN

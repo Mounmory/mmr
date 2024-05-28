@@ -31,26 +31,26 @@ void CCmdService::cmdLoop()
 {
 	print_help();
 
-	while (true)
-	{
-		std::string strCmd;
-		printf("> ");
-		std::getline(std::cin, strCmd);
+	//while (true)
+	//{
+	//	std::string strCmd;
+	//	printf("> ");
+	//	std::getline(std::cin, strCmd);
 
-		if (strCmd == "-q")
-		{
-			CoreFrameworkIns->stop();
-			printf("app stopped!\n");
-			break;
-		}
-		else if (strCmd == "-h")
-		{
-			print_help();
-		}
-		else
-		{
-			printf("invalid command[%s]!\n", strCmd.c_str());
-			print_help();
-		}
-	}
+	//	if (strCmd == "-q")
+	//	{
+	//		CoreFrameworkIns->stop();
+	//		printf("app stopped!\n");
+	//		break;
+	//	}
+	//	else if (strCmd == "-h")
+	//	{
+	//		print_help();
+	//	}
+	//	else
+	//	{
+	//		printf("invalid command[%s]!\n", strCmd.c_str());
+	//		print_help();
+	//	}
+	//}
 }

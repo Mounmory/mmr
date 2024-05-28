@@ -5,12 +5,7 @@
 
 static const char detail_options[] = R"(
   -h|--help                 Print this information
-  -v|--version              Print version
-  -c|--confile <confile>    Set configure file, default etc/{program}.conf
-  -t|--test                 Test configure file and exit
-  -s|--signal <signal>      Send <signal> to process,
-                            <signal>=[start,stop,restart,status,reload]
-  -p|--port <port>          Set listen port
+  -l|--log                  Component logger settings and viewing
   -q|--quit                 quit
 )";
 
@@ -41,15 +36,19 @@ void CAppControler::run()
 			printf("> ");
 			std::getline(std::cin, strCmd);
 
-			if (strCmd == "-q")
+			if(strCmd == "-h" )
+			{
+				print_help();
+			}
+			else if (strCmd == "-l")
+			{
+				CoreFrameworkIns->loggerCtrlLoop();
+			}
+			else if (strCmd == "-q")
 			{
 				CoreFrameworkIns->stop();
 				printf("app stopped!\n");
 				break;
-			}
-			else if(strCmd == "-h" )
-			{
-				print_help();
 			}
 			else
 			{
@@ -61,7 +60,7 @@ void CAppControler::run()
 	}
 	else 
 	{
-		std::cout << "Core framework start failed!";
+		std::cout << "Core framework start failed!\n";
 	}
 
 

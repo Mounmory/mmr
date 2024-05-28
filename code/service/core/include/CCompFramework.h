@@ -12,6 +12,8 @@
 #include "IEventHandler.h"
 #include "IComponent.h"
 
+#include "util/Clogger.h"
+
 #ifdef OS_WIN
 #include <Windows.h>
 static const char* strLibExtension = ".dll";
@@ -66,6 +68,10 @@ public:
 
 	//void removeComponet(uint16_t usIndex);
 
+	void addComponetLogWrapper(std::string strCompName, std::weak_ptr<mmrUtil::LogWrapper> logWrap);
+
+	void loggerCtrlLoop();
+
 	template<typename _T>
 	void registService(std::shared_ptr<_T> pSer) 
 	{
@@ -107,6 +113,7 @@ private:
 	std::unordered_map<uint16_t, std::unique_ptr<IComponent>> m_mapComponents;
 	std::map<std::string, std::shared_ptr<void>> m_mapService;//在组件初始化时注册组件，因此不用使用锁
 	std::set<libHandle> m_libHandl;
+	std::unordered_map<std::string, std::weak_ptr<mmrUtil::LogWrapper>> m_mapCompLogger;//所有控件日志组件
 };
 
 template<typename _T>

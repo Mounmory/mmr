@@ -202,12 +202,14 @@ COMMON_FUN_API bool mmrUtil::getAppPathAndName(std::string& filePath, std::strin
 	}
 	return true;
 #else
+	pid_t pid = getpid();
 	char tmpPath[MAX_STR_LEN];//路径
 	char tmpName[MAX_STR_LEN];//exe名称
-	char *path_end;
-	if (readlink("/proc/self/exe", tmpPath, MAX_STR_LEN) <= 0)
+	ssize_t len = readlink(std::string("/proc/").append(std::to_string(pid)).append("/exe").c_str(), tmpPath, MAX_STR_LEN - 1);
+	if (len <= 0)
 		return false;
-	path_end = strrchr(tmpPath, '/');
+	tmpPath[len] = '\0';
+	char *path_end = strrchr(tmpPath, '/');
 	if (path_end == NULL)
 		return false;
 	++path_end;

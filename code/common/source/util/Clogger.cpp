@@ -1,57 +1,65 @@
-#include "util/Clogger.h"
+ï»¿#include "util/Clogger.h"
 #include "util/UtilFunc.h"
 #include <stdarg.h>
 
-#include <iomanip> //std::setfillÍ·ÎÄ¼ş
+#include <iomanip> //std::setfillå¤´æ–‡ä»¶
 
 
 #ifdef OS_WIN
-#include <corecrt_io.h>	//_accessÍ·ÎÄ¼ş
+#include <corecrt_io.h>	//_accesså¤´æ–‡ä»¶
 #include <windows.h>
 #elif defined OS_LINUX
-#include <sys/stat.h>  //ĞÂ½¨ÎÄ¼ş¼ĞÍ·ÎÄ¼ş
-#include <sys/types.h> //ĞÂ½¨ÎÄ¼ş¼ĞÍ·ÎÄ¼ş
+#include <sys/stat.h>  //æ–°å»ºæ–‡ä»¶å¤¹å¤´æ–‡ä»¶
+#include <sys/types.h> //æ–°å»ºæ–‡ä»¶å¤¹å¤´æ–‡ä»¶
 #include <unistd.h>
 #endif
 
 #define MAX_FILE_SIZE 64*1024*1024
+#define MIN_AVAILI_SIZE 1024
 //#define MAX_FILE_SIZE 100
 
 #define LOG_BY_LEVEL(logLevel)\
-static char* strBufPtr = nullptr;\
-std::lock_guard<std::mutex> guard(m_mutWrite);\
-if (LogCheck(logLevel) == false)\
+if (m_LogLevel < logLevel)\
 return;\
-va_list arglist;\
-va_start(arglist, format);\
-int strLen = vsnprintf(m_pBuf, m_lBufLen, format, arglist);\
-if (strLen > m_lBufLen && strLen < m_lBigBufLen)\
-{\
-	vsnprintf(m_pBigBuf, m_lBigBufLen, format, arglist);\
-	strBufPtr = &m_pBigBuf[0];\
-}\
-else\
-{\
-	strBufPtr = &m_pBuf[0];\
-}\
-va_end(arglist);\
 auto now = std::chrono::system_clock::now();\
 auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;\
 std::time_t current_time = std::chrono::system_clock::to_time_t(now);\
 std::tm* time_info = std::localtime(&current_time);\
-m_logStream << "[" << std::this_thread::get_id() << "]"\
-<< (time_info->tm_year + 1900) << "-" << std::setfill('0') << std::setw(2) << (time_info->tm_mon + 1) << "-" << std::setfill('0') << std::setw(2) << time_info->tm_mday\
-<< " " << std::setfill('0') << std::setw(2) << time_info->tm_hour << ":" << std::setfill('0') << std::setw(2) << time_info->tm_min << ":"\
-<< std::setfill('0') << std::setw(2) << time_info->tm_sec << "." << std::setfill('0') << std::setw(3) << now_ms\
-<< strBufPtr << std::endl
+std::unique_lock<std::mutex> guard(m_mutWrite); \
+if (time_info->tm_sec != m_lastTime.tm_sec\
+	|| time_info->tm_min != m_lastTime.tm_min\
+	|| time_info->tm_hour != m_lastTime.tm_hour\
+	|| time_info->tm_mday != m_lastTime.tm_mday\
+	|| time_info->tm_mon != m_lastTime.tm_mon\
+	|| time_info->tm_year != m_lastTime.tm_year)\
+{\
+	m_lastTime.tm_sec = time_info->tm_sec;\
+	m_lastTime.tm_min = time_info->tm_min;\
+	m_lastTime.tm_hour = time_info->tm_hour;\
+	m_lastTime.tm_mday = time_info->tm_mday;\
+	m_lastTime.tm_mon = time_info->tm_mon;\
+	m_lastTime.tm_year = time_info->tm_year;\
+	snprintf(m_szLastTime, sizeof(m_szLastTime), "%04d-%02d-%02d %02d:%02d:%02d",\
+		m_lastTime.tm_year + 1900, m_lastTime.tm_mon + 1, m_lastTime.tm_mday,\
+		m_lastTime.tm_hour, m_lastTime.tm_min, m_lastTime.tm_sec);\
+}\
+if (m_pBufWrite->getTryAvailid() <= MIN_AVAILI_SIZE)/*ä¿ç•™1024ä¸ªå­—èŠ‚ï¼Œå°äºè¿™ä¸ªå­—èŠ‚å°±ä¿å­˜äº†*/\
+{\
+	updateBufWrite();\
+	m_cv.notify_all();\
+}\
+snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);\
+m_pBufWrite->addTryIncrease(24);\
+va_list arglist;\
+va_start(arglist, format);\
+int strLen = vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);\
+m_pBufWrite->addTryIncrease(strLen);\
+m_pBufWrite->doneTry();\
+va_end(arglist)
 
 
 mmrUtil::CLogger::CLogger()
-	: m_LogLevel(emLogLevel::LOG_DEBUG)
-	, m_lBufLen(1024)
-	, m_lBigBufLen(4096)
-	, m_pBuf(new char[m_lBufLen])
-	, m_pBigBuf(new char[m_lBigBufLen])
+	: m_LogLevel(emLogLevel::Log_Debug)
 	, m_fileNum(10)
 	, m_fileSize(MAX_FILE_SIZE)
 {
@@ -61,8 +69,6 @@ mmrUtil::CLogger::CLogger()
 mmrUtil::CLogger::~CLogger()
 {
 	stop();
-	delete[] m_pBuf;
-	delete[] m_pBigBuf;
 }
 
 mmrUtil::CLogger* mmrUtil::CLogger::getLogger()
@@ -104,29 +110,29 @@ bool mmrUtil::CLogger::init(const std::string& strPath, const std::string& strNa
 	m_strLogName = strName;
 	m_strFilePath = m_strLogDir + m_strLogName + ".log";
 #ifdef OS_WIN
-	if (_access(m_strLogDir.c_str(), 0) == -1)//Èç¹ûÊı¾İ¿âÎÄ¼ş¼Ğ²»´æÔÚ£¬Ôò´´½¨
+	if (_access(m_strLogDir.c_str(), 0) == -1)//å¦‚æœæ•°æ®åº“æ–‡ä»¶å¤¹ä¸å­˜åœ¨ï¼Œåˆ™åˆ›å»º
 	{
 		if (CreateDirectory(m_strLogDir.c_str(), 0) == false)
 		{
-			m_LogLevel = emLogLevel::LOG_OFF;//´´½¨ÎÄ¼ş¼ĞÊ§°Ü£¬²»Êä³öÈÕÖ¾
+			m_LogLevel = emLogLevel::Log_Off;//åˆ›å»ºæ–‡ä»¶å¤¹å¤±è´¥ï¼Œä¸è¾“å‡ºæ—¥å¿—
 			std::cerr <<"[" << __FUNCTION__ << "]["<< __LINE__ << "Create directory " << m_strLogDir.c_str() << "failed!" << std::endl;
 			return false;
 		}
 	}
 #elif defined OS_LINUX
-	if (access(m_strLogDir.c_str(), 0) != F_OK) //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
+	if (access(m_strLogDir.c_str(), 0) != F_OK) //æ£€æŸ¥æ–‡ä»¶å¤¹æ˜¯å¦å­˜åœ¨ï¼Œä¸å­˜åœ¨åˆ™åˆ›å»º
 	{
-		mkdir(m_strLogDir.c_str(), S_IRWXO); //ËùÓĞÈË¶¼ÓĞÈ¨ÏŞ¶ÁĞ´
+		mkdir(m_strLogDir.c_str(), S_IRWXO); //æ‰€æœ‰äººéƒ½æœ‰æƒé™è¯»å†™
 
 		if (access(m_strLogDir.c_str(), 0) != F_OK)
 		{
-			m_LogLevel = emLogLevel::LOG_OFF;//´´½¨ÎÄ¼ş¼ĞÊ§°Ü£¬²»Êä³öÈÕÖ¾
+			m_LogLevel = emLogLevel::Log_Off;//åˆ›å»ºæ–‡ä»¶å¤¹å¤±è´¥ï¼Œä¸è¾“å‡ºæ—¥å¿—
 			std::cerr << "[" << __FUNCTION__ << "][" << __LINE__ << "Create directory " << m_strLogDir.c_str() << "failed!" << std::endl;
 			return false;
 		}
 	}
 #endif
-	//¶ÁÅäÖÃÎÄ¼şÉèÖÃ²ÎÊı
+	//è¯»é…ç½®æ–‡ä»¶è®¾ç½®å‚æ•°
 
 	return true;
 }
@@ -165,24 +171,24 @@ bool mmrUtil::CLogger::start()
 		m_logStream.seekp(0, std::ios::end);
 	}
 
-	//Æô¶¯´¦ÀíÏß³Ì
+	//å¯åŠ¨å¤„ç†çº¿ç¨‹
 	m_bRunning.store(true, std::memory_order_relaxed);
 	m_threadDeal = std::make_unique<std::thread>(&CLogger::dealThread, this);
 
-	LOG_FORCE("----------------- start -----------------");
+	logWrite("[%d][A][%s][%d]----------------- start -----------------\n", Thread_ID, __FUNCTION__, __LINE__);
 	return true;
 }
 
 void mmrUtil::CLogger::stop()
 {
-	//Í£µôÏß³Ì
+	//åœæ‰çº¿ç¨‹
 	if (true == m_bRunning)
 	{
-		m_bRunning.store(false, std::memory_order_relaxed);//ÍË³öÏß³Ì
+		m_bRunning.store(false, std::memory_order_relaxed);//é€€å‡ºçº¿ç¨‹
 		m_cv.notify_all();
 		if (m_threadDeal->joinable())
 		{
-			m_threadDeal->join();//µÈ´ıÏß³Ì½áÊø
+			m_threadDeal->join();//ç­‰å¾…çº¿ç¨‹ç»“æŸ
 		}
 	}
 
@@ -192,6 +198,42 @@ void mmrUtil::CLogger::stop()
 	}
 }
 
+void mmrUtil::CLogger::LogForce(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Forece);
+
+	//if (m_LogLevel < emLogLevel::Log_Forece)
+	//	return; 
+	//va_list args;
+	//va_start(args, format);
+	//logWrite(format, args);
+	//va_end(args);
+}
+
+void mmrUtil::CLogger::LogFatal(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Fatal);
+}
+
+void mmrUtil::CLogger::LogError(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Error);
+}
+
+void mmrUtil::CLogger::LogWarn(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Warn);
+}
+
+void mmrUtil::CLogger::LogInfo(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Info);
+}
+
+void mmrUtil::CLogger::LogDebug(const char *format, ...)
+{
+	LOG_BY_LEVEL(emLogLevel::Log_Debug);
+}
 
 void mmrUtil::CLogger::logWrite(const char *format, ...)
 {
@@ -201,7 +243,7 @@ void mmrUtil::CLogger::logWrite(const char *format, ...)
 	std::tm* time_info = std::localtime(&current_time);
 
 	std::unique_lock<std::mutex> lock(m_mutWrite);
-	if (time_info->tm_sec != m_lastTime.tm_sec //ÓÉµÍµ½¸ß±È½Ï
+	if (time_info->tm_sec != m_lastTime.tm_sec //ç”±ä½åˆ°é«˜æ¯”è¾ƒ
 		|| time_info->tm_min != m_lastTime.tm_min
 		|| time_info->tm_hour != m_lastTime.tm_hour
 		|| time_info->tm_mday != m_lastTime.tm_mday
@@ -220,127 +262,32 @@ void mmrUtil::CLogger::logWrite(const char *format, ...)
 			m_lastTime.tm_hour, m_lastTime.tm_min, m_lastTime.tm_sec);
 	}
 
-	if (m_pBufWrite->getTryAvailid() <= 50)//×Ö·û³¤¶È²»¹»ÁË
+	if (m_pBufWrite->getTryAvailid() <= MIN_AVAILI_SIZE)//ä¿ç•™1024ä¸ªå­—èŠ‚ï¼Œå°äºè¿™ä¸ªå­—èŠ‚å°±ä¿å­˜äº†
 	{
 		updateBufWrite();
 		m_cv.notify_all();
 	}
 
-	//Ğ´ÈëÊ±¼ä
+	//å†™å…¥æ—¶é—´
 	snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);
 	m_pBufWrite->addTryIncrease(24);
 
 	va_list arglist;
 	va_start(arglist, format);
-	size_t weakAvilid = m_pBufWrite->getTryAvailid();
-	int strLen = vsnprintf(m_pBufWrite->getTryCurrent(), weakAvilid, format, arglist);
-	if (strLen > weakAvilid)
-	{
-		m_pBufWrite->clearTry();
-
-		updateBufWrite();
-
-		m_cv.notify_all();
-
-		snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);
-		m_pBufWrite->addTryIncrease(24);
-		//ÈôĞÂÊı¾İµÄavailid³¤¶ÈĞ¡ÓÚstrLen£¬½«µ¼ÖÂºóÃæaddTryIncrease³¤¶È´íÎó£¬µ«ĞÂ½¨»º³å³¤¶ÈÍùÍù½Ï´ó£¬¼¸ºõ²»¿ÉÄÜ³öÏÖ£¬Òò´ËÔİÇÒ²»×ö³¤¶ÈÅĞ¶Ï
-		vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);
-	}
+	int strLen = vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);
+	//if (strLen > weakAvilid)//linuxç³»ç»Ÿä¸‹äºŒæ¬¡è°ƒç”¨vsnprintfä¼šäº§ç”Ÿæ®µé”™è¯¯ï¼Œå› æ­¤å³ä½¿é•¿åº¦ä¸é‡æ–°å†™äº†
+	//{
+	//	m_pBufWrite->clearTry();
+	//	updateBufWrite();
+	//	m_cv.notify_all();
+	//	snprintf(m_pBufWrite->getTryCurrent(), 25, "%s.%03d ", m_szLastTime, now_ms);
+	//	m_pBufWrite->addTryIncrease(24);
+	//	//è‹¥æ–°æ•°æ®çš„availidé•¿åº¦å°äºstrLenï¼Œå°†å¯¼è‡´åé¢addTryIncreaseé•¿åº¦é”™è¯¯ï¼Œä½†æ–°å»ºç¼“å†²é•¿åº¦å¾€å¾€è¾ƒå¤§ï¼Œå‡ ä¹ä¸å¯èƒ½å‡ºç°ï¼Œå› æ­¤æš‚ä¸”ä¸åšé•¿åº¦åˆ¤æ–­
+	//	vsnprintf(m_pBufWrite->getTryCurrent(), m_pBufWrite->getTryAvailid(), format, arglist);
+	//}
 	m_pBufWrite->addTryIncrease(strLen);
 	m_pBufWrite->doneTry();
 	va_end(arglist);
-}
-
-
-void mmrUtil::CLogger::LogForce(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_FORCE, O);
-}
-
-void mmrUtil::CLogger::LogFatal(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_FATAL);
-}
-
-void mmrUtil::CLogger::LogError(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_ERROR);
-}
-
-void mmrUtil::CLogger::LogWarn(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_WARN);
-}
-
-void mmrUtil::CLogger::LogInfo(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_INFO);
-}
-
-void mmrUtil::CLogger::LogDebug(const char *format, ...)
-{
-	LOG_BY_LEVEL(emLogLevel::LOG_DEBUG);
-}
-
-bool mmrUtil::CLogger::LogCheck(emLogLevel level)
-{
-	// check log level
-	if (m_LogLevel < level)
-	{
-		return false;
-	}
-
-	if (!m_logStream.is_open() || !m_logStream.seekp(0, std::ios::end))//Èç¹ûÃ»ÓĞ´ò¿ª
-	{
-		m_LogLevel = emLogLevel::LOG_OFF;
-		std::cerr << "log file open failed!" << std::endl;
-		return false;
-	}
-
-	if (m_logStream.tellp() > m_fileSize)//ÎÄ¼ş´óÓÚ×î´óÎÄ¼ş´óĞ¡
-	{
-		//ĞŞ¸ÄÎÄ¼şÃû³Æ
-		m_logStream.close();
-
-		std::string strOldName; //¾ÉÃû³Æ
-		std::string strNewName; //ĞÂÃû³Æ
-		int32_t nLogNumIndex = m_fileNum;
-		strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex); //×î´óĞòºÅµÄÈÕÖ¾
-#ifdef OS_WIN
-		if (_access(strNewName.c_str(), 0) != -1)
-		{
-			remove(strNewName.c_str()); //É¾³ı
-		}
-		while (--nLogNumIndex > 0) //¼õĞ¡ĞòºÅ£¬ÒÔ´Ë¸ü¸ÄÈÕÖ¾Ãû³Æ
-		{
-			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-			if (_access(strOldName.c_str(), 0) != -1) //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
-			{
-				rename(strOldName.c_str(), strNewName.c_str()); //É¾³ı
-			}
-			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-		}
-
-#elif defined OS_LINUX
-		if (access(strNewName.c_str(), 0) == F_OK)                                                 //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
-		{
-			remove(strNewName.c_str()); //É¾³ı
-		}
-		while (--nLogNumIndex > 0) //¼õĞ¡ĞòºÅ£¬ÒÔ´Ë¸ü¸ÄÈÕÖ¾Ãû³Æ
-		{
-			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-			if (access(strOldName.c_str(), 0) == F_OK) //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
-			{
-				rename(strOldName.c_str(), strNewName.c_str()); //É¾³ı
-			}
-			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-		}
-#endif
-		rename(m_strFilePath.c_str(), strNewName.c_str()); //ÖØÃüÃû
-		m_logStream.open(m_strFilePath, std::fstream::app);
-	}
-	return true;
 }
 
 void mmrUtil::CLogger::dealThread()
@@ -390,7 +337,7 @@ void mmrUtil::CLogger::updateBufWrite()
 	}
 	else
 	{
-		//ÊÇ·ñĞÂÔö»º³åÇø±ê¼Ç
+		//æ˜¯å¦æ–°å¢ç¼“å†²åŒºæ ‡è®°
 		std::cout << " warning! log buf empty queue is empty!" << std::endl;
 		m_pBufWrite = std::make_unique<CBigBuff>(m_ulBigBufSize);
 	}
@@ -398,46 +345,46 @@ void mmrUtil::CLogger::updateBufWrite()
 
 void mmrUtil::CLogger::fileSizeCheck()
 {
-	if (m_logStream.tellp() > m_fileSize)//ÎÄ¼ş´óÓÚ×î´óÎÄ¼ş´óĞ¡
+	if (m_logStream.tellp() > m_fileSize)//æ–‡ä»¶å¤§äºæœ€å¤§æ–‡ä»¶å¤§å°
 	{
-		//ĞŞ¸ÄÎÄ¼şÃû³Æ
+		//ä¿®æ”¹æ–‡ä»¶åç§°
 		m_logStream.close();
 
-		std::string strOldName; //¾ÉÃû³Æ
-		std::string strNewName; //ĞÂÃû³Æ
+		std::string strOldName; //æ—§åç§°
+		std::string strNewName; //æ–°åç§°
 		int32_t nLogNumIndex = m_fileNum;
-		strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex); //×î´óĞòºÅµÄÈÕÖ¾
+		strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex); //æœ€å¤§åºå·çš„æ—¥å¿—
 #ifdef OS_WIN
 		if (_access(strNewName.c_str(), 0) != -1)
 		{
-			remove(strNewName.c_str()); //É¾³ı
+			remove(strNewName.c_str()); //åˆ é™¤
 		}
-		while (--nLogNumIndex > 0) //¼õĞ¡ĞòºÅ£¬ÒÔ´Ë¸ü¸ÄÈÕÖ¾Ãû³Æ
+		while (--nLogNumIndex > 0) //å‡å°åºå·ï¼Œä»¥æ­¤æ›´æ”¹æ—¥å¿—åç§°
 		{
 			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-			if (_access(strOldName.c_str(), 0) != -1) //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
+			if (_access(strOldName.c_str(), 0) != -1) //æ£€æŸ¥æ–‡ä»¶å¤¹æ˜¯å¦å­˜åœ¨ï¼Œä¸å­˜åœ¨åˆ™åˆ›å»º
 			{
-				rename(strOldName.c_str(), strNewName.c_str()); //É¾³ı
+				rename(strOldName.c_str(), strNewName.c_str()); //åˆ é™¤
 			}
 			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
 		}
 
 #elif defined OS_LINUX
-		if (access(strNewName.c_str(), 0) == F_OK)                                                 //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
+		if (access(strNewName.c_str(), 0) == F_OK)                                                 //æ£€æŸ¥æ–‡ä»¶å¤¹æ˜¯å¦å­˜åœ¨ï¼Œä¸å­˜åœ¨åˆ™åˆ›å»º
 		{
-			remove(strNewName.c_str()); //É¾³ı
+			remove(strNewName.c_str()); //åˆ é™¤
 		}
-		while (--nLogNumIndex > 0) //¼õĞ¡ĞòºÅ£¬ÒÔ´Ë¸ü¸ÄÈÕÖ¾Ãû³Æ
+		while (--nLogNumIndex > 0) //å‡å°åºå·ï¼Œä»¥æ­¤æ›´æ”¹æ—¥å¿—åç§°
 		{
 			strOldName = m_strFilePath + "." + std::to_string(nLogNumIndex);
-			if (access(strOldName.c_str(), 0) == F_OK) //¼ì²éÎÄ¼ş¼ĞÊÇ·ñ´æÔÚ£¬²»´æÔÚÔò´´½¨
+			if (access(strOldName.c_str(), 0) == F_OK) //æ£€æŸ¥æ–‡ä»¶å¤¹æ˜¯å¦å­˜åœ¨ï¼Œä¸å­˜åœ¨åˆ™åˆ›å»º
 			{
-				rename(strOldName.c_str(), strNewName.c_str()); //É¾³ı
+				rename(strOldName.c_str(), strNewName.c_str()); //åˆ é™¤
 			}
 			strNewName = m_strFilePath + "." + std::to_string(nLogNumIndex);
 		}
 #endif
-		rename(m_strFilePath.c_str(), strNewName.c_str()); //ÖØÃüÃû
+		rename(m_strFilePath.c_str(), strNewName.c_str()); //é‡å‘½å
 		m_logStream.open(m_strFilePath, std::fstream::app);
 	}
 }

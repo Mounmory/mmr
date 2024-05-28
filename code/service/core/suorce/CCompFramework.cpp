@@ -1,13 +1,11 @@
 ﻿#include "CCompFramework.h"
-#include "util/Clogger.h"
+
 #include "util/json.hpp"
 #include "util/UtilFunc.h"
 
 #include <sstream>
 #include <fstream>
 #include <iostream>
-
-
 
 bool mmrComp::CCompFramework::start()
 {
@@ -16,79 +14,98 @@ bool mmrComp::CCompFramework::start()
 		LOG_WARN("component has been started!");
 		return false;
 	}
-	//启动日志
-	logInstancePtr->start();
 
-	//启动处理线程
-	m_bRunning.store(true, std::memory_order_relaxed);
-	m_threadDeal = std::make_unique<std::thread>(&CCompFramework::dealThread, this);
-
-	//读配置文件，加载所有组件
-	std::string strAppPath, strAppName;
-	mmrUtil::getAppPathAndName(strAppPath, strAppName);
-	std::string strConfigPath = strAppPath + "config/serviceApp.json";
-
-	Json::Value jsonRoot;
-	std::string strErr = Json::json_from_file(strConfigPath, jsonRoot);
-
-	if (jsonRoot.IsNull() || !strErr.empty())
+	try
 	{
-		LOG_ERROR("parse json file [%s] failed! error message is: %s", strConfigPath.c_str(), strErr.c_str());
-		return false;
-	}
+		//启动日志
+		logInstancePtr->start();
 
-	auto components = jsonRoot["Components"];
-	if (components.IsNull())
-	{
-		LOG_ERROR("config file [%s] do not has kye [Components] !", strConfigPath.c_str());
-		return false;
-	}
+		//启动处理线程
+		m_bRunning.store(true, std::memory_order_relaxed);
+		m_threadDeal = std::make_unique<std::thread>(&CCompFramework::dealThread, this);
 
-	for (const auto& iterComp : components.ObjectRange())
-	{
+		//读配置文件，加载所有组件
+		std::string strAppPath, strAppName;
+		mmrUtil::getAppPathAndName(strAppPath, strAppName);
+		std::string strConfigPath = strAppPath + "config/serviceApp.json";
+
+		Json::Value jsonRoot;
+		std::string strErr = Json::json_from_file(strConfigPath, jsonRoot);
+
+		if (jsonRoot.IsNull() || !strErr.empty())
+		{
+			LOG_ERROR_PRINT("parse json file [%s] failed! error message is: %s.", strConfigPath.c_str(), strErr.c_str());
+			return false;
+		}
+
+		auto components = jsonRoot["Components"];
+		if (components.IsNull())
+		{
+			LOG_ERROR_PRINT("config file [%s] do not has key [Components] !", strConfigPath.c_str());
+			return false;
+		}
+
+		for (const auto& iterComp : components.ObjectRange())
+		{
 #ifdef OS_WIN
-		std::string strLibPath = strAppPath + "component/" + iterComp.first + ".dll";
-		HINSTANCE handle = LoadLibrary(strLibPath.c_str());
-		if (handle == nullptr)
-		{
-			FreeLibrary(handle);
-		}
+			std::string strLibPath = strAppPath + "component/" + iterComp.first + ".dll";
+			HINSTANCE handle = LoadLibrary(strLibPath.c_str());
+			if (handle == nullptr)
+			{
+				FreeLibrary(handle);
+			}
 #elif defined OS_LINUX
-		std::string strLibPath = strAppPath + "component/lib" + iterComp.first + ".so";
-		void* handle = dlopen(strLibPath.c_str(), RTLD_LAZY);
-		if (handle == nullptr)
-		{
-			dlclose(handle);
-		}
+			std::string strLibPath = strAppPath + "component/lib" + iterComp.first + ".so";
+			void* handle = dlopen(strLibPath.c_str(), RTLD_LAZY);
+			if (handle == nullptr)
+			{
+				dlclose(handle);
+			}
 #endif
-		else
-		{
-			m_libHandl.insert(handle);
+			else
+			{
+				m_libHandl.insert(handle);
+			}
 		}
+		//初始化所有组件
+		for (const auto& iterComp : m_mapComponents)
+		{
+			std::string strComoName = iterComp.second->getName();
+			if (!components.hasKey(strComoName))
+			{
+				LOG_ERROR_PRINT("component name [%s] do not find in config file!", strComoName.c_str());
+				continue;
+
+			}
+			if (!iterComp.second->initialise(components[strComoName]))
+			{
+				LOG_ERROR_PRINT("init component name [%s] failed!", strComoName.c_str());
+				continue;
+			}
+		}
+
+		for (const auto& iterComp : m_mapComponents)
+		{
+			if (!iterComp.second->start())
+			{
+				LOG_ERROR_PRINT("component [%s] start failed!", iterComp.second->getName());
+			}
+		}
+
+		LOG_INFO("framework start success ....");
+		printf("framework start success ....\n\n");
 	}
-	//初始化所有组件
-	for (const auto& iterComp : m_mapComponents)
+	catch (std::exception& e)
 	{
-		std::string strComoName = iterComp.second->getName();
-		if (!components.hasKey(strComoName))
-		{
-			LOG_ERROR("component name [%s] do not find in config file!", strComoName.c_str());
-			continue;
-			
-		}
-		if (!iterComp.second->initialise(components[strComoName]))
-		{
-			LOG_ERROR("init component name [%s] failed!", strComoName.c_str());
-			continue;
-		}
+		LOG_FATAL("exception info is %s.", e.what());
+		return false;
+	}
+	catch (...)
+	{
+		LOG_FATAL("unknow exception.");
+		return false;
 	}
 
-	for (const auto& iterComp : m_mapComponents)
-	{
-		iterComp.second->start();
-	}
-
-	LOG_INFO("framework started!");
 	return true;
 }
 
@@ -116,6 +133,8 @@ void mmrComp::CCompFramework::stop()
 	m_mapComponents.clear();
 
 	m_mapService.clear();
+
+	m_mapCompLogger.clear();
 
 	//卸载所有动态库
 	for (const auto& iterHandl:m_libHandl)
@@ -233,3 +252,51 @@ bool mmrComp::CCompFramework::addComponent(std::unique_ptr<IComponent> pComp)
 //{
 //	//暂不实现
 //}
+
+void mmrComp::CCompFramework::addComponetLogWrapper(std::string strCompName, std::weak_ptr<mmrUtil::LogWrapper> logWrap)
+{
+	m_mapCompLogger.insert(std::make_pair(std::move(strCompName), logWrap));
+}
+
+static const char logger_options[] = R"(
+  -vl|--view logger         Viewing all component logger settings
+  -sl|--set logger          set component logger
+  -q|--quit                 quit
+)";
+
+void print_log_opt()
+{
+	printf("Options:\n%s\n", logger_options);
+}
+
+void mmrComp::CCompFramework::loggerCtrlLoop()
+{
+	print_log_opt();
+	while (true)
+	{
+		std::string strCmd;
+		printf("logger> ");
+		std::getline(std::cin, strCmd);
+
+		auto pos = strCmd.find("-vl");
+		if (strCmd.find("-vl") == 0)
+		{
+			printf("view logger \n");
+		}
+		else if(strCmd.find("-sl") == 0)
+		{
+			printf("set logger \n");
+		}
+		else if (strCmd == "-q")
+		{
+			printf("quit log setting \n");
+			break;
+		}
+		else
+		{
+			printf("invalid command[%s]!\n", strCmd.c_str());
+			print_log_opt();
+		}
+	}
+}
+

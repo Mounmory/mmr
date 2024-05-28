@@ -1,6 +1,6 @@
 #ifndef CCOMPONENTACTIVATOR_H
 #define CCOMPONENTACTIVATOR_H
-#include "CCompFramework.h"
+#include "IComponent.h"
 
 class CComponentActivator :public IComponent 
 {

@@ -36,6 +36,8 @@ MACRO(build_service_component targetName)
 
 	add_definitions(-DMMR_COMPONENT_EXPORT)
 
+	add_definitions(-DMMR_LOGGER_WRAP)
+
 	# 增加动态链接库
 	add_library(${targetName} SHARED
 		${COPM_COMMON_HEADS}
