@@ -1,6 +1,5 @@
 ﻿#ifndef CCOMPFRAMEWORK_H
 #define CCOMPFRAMEWORK_H
-#include <unordered_map>
 #include <set>
 #include <mutex>
 #include <queue>
@@ -11,8 +10,9 @@
 #include "ComponentExport.h"
 #include "IEventHandler.h"
 #include "IComponent.h"
+#include "CLoggerCtrl.h"
 
-#include "util/Clogger.h"
+
 
 #ifdef OS_WIN
 #include <Windows.h>
@@ -41,10 +41,8 @@ public:
 
 class COMPO_CORE_CLASS_API CCompFramework
 {
-	CCompFramework(){
-		m_bRunning.store(false, std::memory_order_relaxed);
-	}
-	~CCompFramework(){}
+	CCompFramework();
+	~CCompFramework();
 public:
 	static CCompFramework* getInstance()
 	{
@@ -113,7 +111,8 @@ private:
 	std::unordered_map<uint16_t, std::unique_ptr<IComponent>> m_mapComponents;
 	std::map<std::string, std::shared_ptr<void>> m_mapService;//在组件初始化时注册组件，因此不用使用锁
 	std::set<libHandle> m_libHandl;
-	std::unordered_map<std::string, std::weak_ptr<mmrUtil::LogWrapper>> m_mapCompLogger;//所有控件日志组件
+	
+	std::unique_ptr<CLoggerCtrl> m_loggerCtrl;//组件日志控制类
 };
 
 template<typename _T>

@@ -7,6 +7,16 @@
 #include <fstream>
 #include <iostream>
 
+mmrComp::CCompFramework::CCompFramework()
+	:m_loggerCtrl(std::make_unique<CLoggerCtrl>())
+{
+	m_bRunning.store(false, std::memory_order_relaxed);
+}
+
+mmrComp::CCompFramework::~CCompFramework()
+{
+
+}
 bool mmrComp::CCompFramework::start()
 {
 	if (m_bRunning.load(std::memory_order_relaxed))
@@ -134,7 +144,7 @@ void mmrComp::CCompFramework::stop()
 
 	m_mapService.clear();
 
-	m_mapCompLogger.clear();
+	m_loggerCtrl->getMapCtrollerPtr().clear();
 
 	//卸载所有动态库
 	for (const auto& iterHandl:m_libHandl)
@@ -147,7 +157,7 @@ void mmrComp::CCompFramework::stop()
 	}
 
 	//清空数据
-	m_mapHandlers.clear();
+	//m_mapHandlers.clear();不用清空，析构函数自动移除
 
 	while (m_queueDealData.size() > 0)
 		m_queueDealData.pop();
@@ -255,48 +265,15 @@ bool mmrComp::CCompFramework::addComponent(std::unique_ptr<IComponent> pComp)
 
 void mmrComp::CCompFramework::addComponetLogWrapper(std::string strCompName, std::weak_ptr<mmrUtil::LogWrapper> logWrap)
 {
-	m_mapCompLogger.insert(std::make_pair(std::move(strCompName), logWrap));
+	m_loggerCtrl->getMapCtrollerPtr().insert(std::make_pair(std::move(strCompName), logWrap));
 }
 
-static const char logger_options[] = R"(
-  -vl|--view logger         Viewing all component logger settings
-  -sl|--set logger          set component logger
-  -q|--quit                 quit
-)";
 
-void print_log_opt()
-{
-	printf("Options:\n%s\n", logger_options);
-}
 
 void mmrComp::CCompFramework::loggerCtrlLoop()
 {
-	print_log_opt();
-	while (true)
-	{
-		std::string strCmd;
-		printf("logger> ");
-		std::getline(std::cin, strCmd);
-
-		auto pos = strCmd.find("-vl");
-		if (strCmd.find("-vl") == 0)
-		{
-			printf("view logger \n");
-		}
-		else if(strCmd.find("-sl") == 0)
-		{
-			printf("set logger \n");
-		}
-		else if (strCmd == "-q")
-		{
-			printf("quit log setting \n");
-			break;
-		}
-		else
-		{
-			printf("invalid command[%s]!\n", strCmd.c_str());
-			print_log_opt();
-		}
-	}
+	m_loggerCtrl->loop();
 }
+
+
 
