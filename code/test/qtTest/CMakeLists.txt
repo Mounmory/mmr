@@ -7,15 +7,24 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 # 开启Qt UIC
 set(CMAKE_AUTOUIC ON)
-#set(QT Core Gui Widgets Charts)
+
+#设置Qt库
+if(WIN32)
+set(QT Core Gui Widgets AxContainer AxServer AxBase)
+else(UNIX)
 set(QT Core Gui Widgets)
+endif()
+
 # 查找Qt库
 find_package(Qt5 REQUIRED ${QT})
 
-include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS}
-        ${Qt5Widgets_INCLUDE_DIRS} ${Qt5Charts_INCLUDE_DIRS})
+#include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS}
+ #       ${Qt5Widgets_INCLUDE_DIRS} ${Qt5AxContainer_INCLUDE_DIRS} ${Qt5AxServer_INCLUDE_DIRS} ${Qt5ActiveQt_INCLUDE_DIRS})
 		
-set(QT_LIBRARIES ${Qt5Widgets_LIBRARIES} ${Qt5Core_LIBRARIES} ${Qt5Gui_LIBRARIES} ${Qt5Charts_LIBRARIES})
+include_directories(${Qt5Core_INCLUDE_DIRS})
+		
+set(QT_LIBRARIES ${Qt5Widgets_LIBRARIES} ${Qt5Core_LIBRARIES} 
+		${Qt5Gui_LIBRARIES} ${Qt5AxContainer_LIBRARIES} ${Qt5AxServer_LIBRARIES} ${Qt5ActiveQt_LIBRARIES} ${Qt5AxBase_LIBRARIES})
 
 message("QT_LIBRARIES ${QT_LIBRARIES}")
 

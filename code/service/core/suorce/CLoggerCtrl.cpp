@@ -50,7 +50,9 @@ void mmrComp::CLoggerCtrl::loop()
 		}
 		else if (strCmd.find("-sl") == 0)
 		{
-			printf("set component log level like [ComponentName]:[level].\n");
+			printf("set component log level like [ComponentName]:[level].level [-1](log_off) use symbol [/].\n");
+			printf("this modification is temporary.\n");
+			
 			printf("logger>-sl>");
 			std::getline(std::cin, strCmd);
 			auto pos = strCmd.find(':');
