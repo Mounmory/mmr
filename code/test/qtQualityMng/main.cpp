@@ -1,24 +1,26 @@
 ﻿#include "Common_def.h"
-#include <QtWidgets/QApplication>
-#include <QtWidgets/QWidget>
-#include <QDebug>
-#include <QDir>
+#include "QualityManangerWidget.h"
+
+
+
 /*
 QT导出excel
 https://blog.csdn.net/wuyuewei/article/details/134329533
 https://blog.csdn.net/hitzsf/article/details/117174007
 */
-#ifdef OS_WIN
-#include <ActiveQt/QAxObject>
-#include "Windows.h"
-#endif // OS_WIN
+
 
 
 int main(int argc, char *argv[])
 {
 
 #ifdef OS_WIN
-	QCoreApplication a(argc, argv);
+	QApplication a(argc, argv);
+	logInstancePtr->start();
+	QualityMangerWgt qmWgt;
+	qmWgt.show();
+	return a.exec();
+
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	//QAxObject excel("Excel.Application");
 	//excel.setProperty("Visible", true);
@@ -73,7 +75,7 @@ int main(int argc, char *argv[])
 
 	//excel->release();
 	delete excel;
-	return a.exec();
+
 #else
 	QApplication a(argc, argv);
 	QWidget w;

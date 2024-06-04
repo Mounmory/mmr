@@ -1,5 +1,5 @@
 ﻿#工程名称
-project(qtTest)
+project(qtQualityMng)
 
 # 开启Qt MOC
 set(CMAKE_AUTOMOC ON)
@@ -18,8 +18,8 @@ endif()
 # 查找Qt库
 find_package(Qt5 REQUIRED ${QT})
 
-include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS}
-		${Qt5Widgets_INCLUDE_DIRS} ${Qt5AxContainer_INCLUDE_DIRS} ${Qt5AxServer_INCLUDE_DIRS} ${Qt5AxBase_INCLUDE_DIRS})
+#include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS}
+ #       ${Qt5Widgets_INCLUDE_DIRS} ${Qt5AxContainer_INCLUDE_DIRS} ${Qt5AxServer_INCLUDE_DIRS} ${Qt5ActiveQt_INCLUDE_DIRS})
 		
 include_directories(${Qt5Core_INCLUDE_DIRS})
 		
@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME} #WIN32
 	
 target_link_libraries(${PROJECT_NAME} 
 	${QT_LIBRARIES}
+	mmrUtil
 	)
 	
 INSTALL(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
