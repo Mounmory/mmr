@@ -15,14 +15,34 @@
 
 #include <set>
 #include <map>
+#include <string>
+#include <fstream>
+#include <atomic>
 
 #include "util/Clogger.h"
+#include "util/json.hpp"
 
 #ifdef OS_WIN
 #include <QAxObject>
 #include "Windows.h"
 #endif // OS_WIN
 
+
+class AtomicLock 
+{
+public:
+	AtomicLock(std::atomic_bool& bAt)
+	:m_ref(bAt)
+	{
+		m_ref.store(true);
+	}
+	~AtomicLock() 
+	{
+		m_ref.store(false);
+	}
+private:
+	std::atomic_bool& m_ref;
+};
 class QualityMangerWgt :public QWidget 
 {
 	Q_OBJECT
@@ -36,20 +56,33 @@ public slots:
 
 	void slot_onFileSelectChanged();
 
+	void slot_onClickUpdateTable();
+
 	void slot_onClickSaveTable();
 
 	void slot_onCellChanged(int row, int column);
 protected:
 	void closeEvent(QCloseEvent *event) override;
+
+private:
+	void saveJson();
+
+	bool openFile(QString strPath);
 private:
 	QAxObject* m_excelApp;
 	QAxObject* m_workbooks;
 	
 	std::map<QString, QAxObject*> m_mapAllFile;
 	QAxObject* m_currentFile = nullptr;
+
+	std::atomic_bool m_bChanging;//表格是否正在添加行等操作
+
+	std::string m_jsonFilePath;
+	Json::Value m_jsonRoot;
 private:
 	QPushButton* m_btnDeleRow;
 	QPushButton* m_btnOpenExcel;
+	QPushButton* m_btnUpdate;
 	QPushButton* m_btnSaveExcel;
 
 	QTableWidget *m_tableFileList;

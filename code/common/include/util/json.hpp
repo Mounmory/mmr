@@ -32,19 +32,19 @@ using std::is_floating_point;
 
 namespace {
 	string json_escape(const string &str) {
-		string output;
-		output.reserve(str.capacity());
-		for (const auto iter :str)
-			switch (iter) {
-			case '\"': output += "\\\""; break;
-			case '\\': output += "\\\\"; break;
-			case '\b': output += "\\b";  break;
-			case '\f': output += "\\f";  break;
-			case '\n': output += "\\n";  break;
-			case '\r': output += "\\r";  break;
-			case '\t': output += "\\t";  break;
-			default: output += iter; break;
-			}
+		string output = str;
+		//output.reserve(str.capacity());
+		//for (const auto iter :str)
+		//	switch (iter) {
+		//	case '\"': output += "\\\""; break;
+		//	case '\\': output += "\\\\"; break;
+		//	case '\b': output += "\\b";  break;
+		//	case '\f': output += "\\f";  break;
+		//	case '\n': output += "\\n";  break;
+		//	case '\r': output += "\\r";  break;
+		//	case '\t': output += "\\t";  break;
+		//	default: output += iter; break;
+		//	}
 		return std::move(output);
 	}
 }
@@ -273,6 +273,12 @@ public:
 	bool hasKey(const string &key) const {
 		if (Type == emJsonType::Object)
 			return Internal.Map->find(key) != Internal.Map->end();
+		return false;
+	}
+
+	bool eraseKey(const string& key) {
+		if (Type == emJsonType::Object)
+			return Internal.Map->erase(key);
 		return false;
 	}
 
@@ -517,7 +523,9 @@ namespace {
 	Value parse_string(const string &str, size_t &offset) {
 		Value String;
 		string val;
-		for (char c = str[++offset]; c != '\"'; c = str[++offset]) {
+		for (char c = str[++offset]; c != '\"'; c = str[++offset]) 
+		{
+	/*		不转义了
 			if (c == '\\') {
 				switch (str[++offset]) {
 				case '\"': val += '\"'; break;
@@ -546,7 +554,7 @@ namespace {
 				default: val += '\\'; break;
 				}
 			}
-			else
+			else*/
 				val += c;
 		}
 		++offset;
