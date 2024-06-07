@@ -25,6 +25,7 @@
 #ifdef OS_WIN
 #include <QAxObject>
 #include "Windows.h"
+#include <corecrt_io.h>	//_access头文件
 #endif // OS_WIN
 
 
@@ -52,6 +53,8 @@ public:
 
 
 public slots:
+	void slot_onClickDeleteFile();
+
 	void slot_onClickSlectFile();
 
 	void slot_onFileSelectChanged();
@@ -76,6 +79,8 @@ private:
 	QAxObject* m_currentFile = nullptr;
 
 	std::atomic_bool m_bChanging;//表格是否正在添加行等操作
+
+	std::map<int, std::string> m_mapColName;//列名称
 
 	std::string m_jsonFilePath;
 	Json::Value m_jsonRoot;

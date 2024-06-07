@@ -1,4 +1,5 @@
-﻿#工程名称
+﻿if(WIN32)
+#工程名称
 project(qtQualityMng)
 
 # 开启Qt MOC
@@ -51,3 +52,4 @@ target_link_libraries(${PROJECT_NAME}
 	)
 	
 INSTALL(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "bin")
+endif()
