@@ -48,7 +48,7 @@ class QualityMangerWgt :public QWidget
 {
 	Q_OBJECT
 public:
-	QualityMangerWgt(QWidget* parent = nullptr);
+	QualityMangerWgt(QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot,QWidget* parent = nullptr);
 	~QualityMangerWgt();
 
 
@@ -80,10 +80,11 @@ private:
 
 	std::atomic_bool m_bChanging;//表格是否正在添加行等操作
 
-	std::map<int, std::string> m_mapColName;//列名称
+	std::map<int, std::pair<std::string,std::string>> m_mapColName;//<列索引,<列名称,列位置>>
 
-	std::string m_jsonFilePath;
-	Json::Value m_jsonRoot;
+	const std::string& m_jsonFilePath;
+	QString m_strTitle;//当前Tab页标题
+	Json::Value& m_jsonRoot;//根Json
 private:
 	QPushButton* m_btnDeleRow;
 	QPushButton* m_btnOpenExcel;

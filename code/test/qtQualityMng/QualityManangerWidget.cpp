@@ -2,11 +2,14 @@
 #include "util/UtilFunc.h"
 
 
-QualityMangerWgt::QualityMangerWgt(QWidget* parent/* = nullptr*/)
+QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot, QWidget* parent/* = nullptr*/)
 	: QWidget(parent)
+	, m_strTitle(strTitle)
+	, m_jsonFilePath(jsonFilePath)
+	, m_jsonRoot(jsonRoot)
 	, m_bChanging(false)
 {
-	this->setWindowTitle(u8"质量问题统计");
+	//this->setWindowTitle(u8"质量问题统计");
 	this->setMinimumHeight(600);
 	this->setMinimumWidth(800);
 
@@ -68,85 +71,68 @@ QualityMangerWgt::QualityMangerWgt(QWidget* parent/* = nullptr*/)
 
 	this->setLayout(m_mainLayout);
 
-	//获取当前进程路径
-	std::string strAppPath, strAppName;
-	mmrUtil::getAppPathAndName(strAppPath, strAppName);
-	std::string configPath = strAppPath + "config/";
-	//if (_access(configPath.c_str(), 0) == -1)//如果数据库文件夹不存在，则创建
-	//{
-	//	if (CreateDirectory(configPath.c_str(), 0) == false)
-	//	{
-	//		QMessageBox::warning(this, u8"错误", u8"初始化配置文件夹失败！");
-	//	}
-	//}
-
 	//获取列索引
 	{
-		std::string strColDefPath = strAppPath + "config/colDef.json";
-		Json::Value jsonCol;
-		std::string strErr = Json::json_from_file(strColDefPath, jsonCol);
-		if (jsonCol.IsNull() || !strErr.empty())
+		const Json::Value& jsonCol = m_jsonRoot.at(m_strTitle.toStdString()).at("pos");
+		QStringList listHead;
+		listHead << u8"表单名称";
+		for (const auto& iterCol : jsonCol.ObjectRange())
 		{
-			LOG_ERROR_PRINT("parse json file [%s] failed! error message is: %s.", m_jsonFilePath.c_str(), strErr.c_str());
+			std::string strValue = iterCol.second.ToString();
+			auto pos = strValue.find("_");
+			if (pos != std::string::npos)
+			{
+				std::string colName(strValue.begin(), strValue.begin() + pos);
+				std::string colPos(strValue.begin() + pos + 1, strValue.end());
+				m_mapColName.insert(std::make_pair(std::atoi(iterCol.first.c_str()), std::make_pair(colName, colPos)));
+			}
+				
 		}
-		else
+		for (const auto& iterMap: m_mapColName) 
 		{
-			QStringList listHead;
-			listHead << u8"表单名称";
-			for (const auto& iterCol : jsonCol.ObjectRange())
-			{
-				m_mapColName.insert(std::make_pair(std::atoi(iterCol.first.c_str()), iterCol.second.ToString()));
-			}
-			for (const auto& iterMap: m_mapColName) 
-			{
-				listHead << iterMap.second.c_str();
-			}
-			int colCount = listHead.size();//总列数
-			m_tableSheetList->setColumnCount(colCount);
-			m_tableSheetList->setRowCount(0); // 初始时不添加任何行
-			m_tableSheetList->setSelectionBehavior(QAbstractItemView::SelectRows);//整行选中
-			// 设置列名称
-			m_tableSheetList->setHorizontalHeaderLabels(listHead);
-			// 设置列宽（可选）
-			m_tableSheetList->setColumnWidth(0, 60);
-			for (int colIndex = 1 ; colIndex < colCount ; ++ colIndex)
-			{
-				m_tableSheetList->horizontalHeaderItem(colIndex)->setTextAlignment(Qt::AlignCenter);
-				m_tableSheetList->setColumnWidth(colIndex, 70);
-			}
+			listHead << iterMap.second.first.c_str();
+		}
+		int colCount = listHead.size();//总列数
+		m_tableSheetList->setColumnCount(colCount);
+		m_tableSheetList->setRowCount(0); // 初始时不添加任何行
+		m_tableSheetList->setSelectionBehavior(QAbstractItemView::SelectRows);//整行选中
+		// 设置列名称
+		m_tableSheetList->setHorizontalHeaderLabels(listHead);
+		// 设置列宽（可选）
+		m_tableSheetList->setColumnWidth(0, 60);
+		for (int colIndex = 1 ; colIndex < colCount ; ++ colIndex)
+		{
+			m_tableSheetList->horizontalHeaderItem(colIndex)->setTextAlignment(Qt::AlignCenter);
+			m_tableSheetList->setColumnWidth(colIndex, 70);
 		}
 	}
 
-
 	//读取历史记录
-	//读配置文件，加载所有组件
-	m_jsonFilePath = strAppPath + "config/history.json";
-	if (_access(m_jsonFilePath.c_str(), 0) != -1)//配置文件存在
+	Json::Value& jsonHisFile = m_jsonRoot.at(m_strTitle.toStdString()).at("files");
+	if (jsonHisFile.JSONType() == Json::Value::emJsonType::Array)
 	{
-		std::string strErr = Json::json_from_file(m_jsonFilePath, m_jsonRoot);
-		if (m_jsonRoot.IsNull() || !strErr.empty())
-		{
-			LOG_ERROR_PRINT("parse json file [%s] failed! error message is: %s.", m_jsonFilePath.c_str(), strErr.c_str());
-		}
 		//解析json到表格
-		std::vector<std::string> vecInvalidFile;
-		auto iterFile = m_jsonRoot.ObjectRange().begin();
-		while (iterFile != m_jsonRoot.ObjectRange().end())
+		std::vector<std::string> vecValidFile;
+		auto iterFile = jsonHisFile.ArrayRange().begin();
+		while (iterFile != jsonHisFile.ArrayRange().end())
 		{
-			if (openFile(iterFile->first.c_str()))
+			std::string strFile = iterFile->ToString();
+			if (!openFile(strFile.c_str()))
 			{
-				LOG_WARN("file %s open failed!", iterFile->first.c_str());
+				LOG_WARN("file %s open failed!", strFile.c_str());
 			}
 			else
 			{
-				vecInvalidFile.emplace_back(iterFile->first);
+				vecValidFile.emplace_back(strFile);
 			}
 			++iterFile;
 		}
-		for (const auto& iterInvalid : vecInvalidFile)
+		jsonHisFile.clear();
+		for (const auto& iterInvalid : vecValidFile)
 		{
-			m_jsonRoot.eraseKey(iterInvalid);
+			jsonHisFile.append(iterInvalid);
 		}
+		saveJson();
 	}
 }
 
@@ -343,7 +329,7 @@ void QualityMangerWgt::slot_onClickSaveTable()
 	for (const auto& iterMap : m_mapColName) 
 	{
 		cell = worksheet->querySubObject("Cells(int, int)", iterMap.first + 1, 1);
-		cell->dynamicCall("SetValue(const QVariant&)", iterMap.second.c_str());
+		cell->dynamicCall("SetValue(const QVariant&)", iterMap.second.first.c_str());
 	}
 
 	int colCount = m_tableSheetList->columnCount();
@@ -479,6 +465,9 @@ void QualityMangerWgt::saveJson()
 
 bool QualityMangerWgt::openFile(QString strPath)
 {
+	if (_access(strPath.toStdString().c_str(), 0) == -1)
+		return false;
+
 	m_workbooks->dynamicCall("Open (const QString&)", strPath);
 	QAxObject *workbook = m_excelApp->querySubObject("ActiveWorkBook");
 	if (workbook)
