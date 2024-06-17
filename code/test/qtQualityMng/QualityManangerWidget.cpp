@@ -2,23 +2,17 @@
 #include "util/UtilFunc.h"
 
 
-QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot, QWidget* parent/* = nullptr*/)
+QualityMangerWgt::QualityMangerWgt(const QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot, QAxObject* axBooks, QWidget* parent/* = nullptr*/)
 	: QWidget(parent)
 	, m_strTitle(strTitle)
 	, m_jsonFilePath(jsonFilePath)
 	, m_jsonRoot(jsonRoot)
+	, m_workbooks(axBooks)
 	, m_bChanging(false)
 {
 	//this->setWindowTitle(u8"质量问题统计");
 	this->setMinimumHeight(600);
 	this->setMinimumWidth(800);
-
-	//初始化excelApp
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	m_excelApp = new QAxObject(qApp);
-	m_excelApp->setControl("Excel.Application");
-	m_excelApp->setProperty("Visible", true);
-	m_workbooks = m_excelApp->querySubObject("Workbooks");
 
 	m_mainLayout = new QGridLayout(this);
 
@@ -29,7 +23,7 @@ QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFil
 
 	//添加文件按钮
 	m_btnOpenExcel = new QPushButton(u8"添加Excel文件");
-	connect(m_btnOpenExcel, &QPushButton::clicked, this, &QualityMangerWgt::slot_onClickSlectFile);
+	connect(m_btnOpenExcel, &QPushButton::clicked, this, &QualityMangerWgt::slot_onClickAddFile);
 	m_mainLayout->addWidget(m_btnOpenExcel, 0, 2, 1, 2);
 
 	m_btnUpdate = new QPushButton(u8"更新当前表格");
@@ -44,7 +38,7 @@ QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFil
 
 	m_tableFileList = new QTableWidget;
 	//表格选中相应
-	connect(m_tableFileList, &QTableWidget::itemSelectionChanged, this, &QualityMangerWgt::slot_onFileSelectChanged);
+	connect(m_tableFileList, &QTableWidget::cellDoubleClicked, this, &QualityMangerWgt::slot_onFileDoubleClicked);
 
 	m_tableFileList->setColumnCount(2);
 	m_tableFileList->setRowCount(0); // 初始时不添加任何行
@@ -116,14 +110,23 @@ QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFil
 		auto iterFile = jsonHisFile.ArrayRange().begin();
 		while (iterFile != jsonHisFile.ArrayRange().end())
 		{
-			std::string strFile = iterFile->ToString();
-			if (!openFile(strFile.c_str()))
+			QString strFile = iterFile->ToString().c_str();
+			auto pos = strFile.lastIndexOf('/');
+			if (pos == -1)
 			{
-				LOG_WARN("file %s open failed!", strFile.c_str());
+				pos = strFile.lastIndexOf('\\');
 			}
-			else
+			if (pos != -1)
 			{
-				vecValidFile.emplace_back(strFile);
+				QString fileName = strFile.mid(pos + 1);
+				int rowIndex = m_tableFileList->rowCount();
+				m_tableFileList->insertRow(rowIndex);
+				QTableWidgetItem *nameItem = new QTableWidgetItem(fileName);
+				QTableWidgetItem *pathItem = new QTableWidgetItem(strFile);
+				m_tableFileList->setItem(rowIndex, 0, nameItem);
+				m_tableFileList->setItem(rowIndex, 1, pathItem);
+				m_mapAllFile.insert(std::make_pair(strFile, fileName));
+				vecValidFile.emplace_back(strFile.toStdString());
 			}
 			++iterFile;
 		}
@@ -139,6 +142,14 @@ QualityMangerWgt::QualityMangerWgt(QString& strTitle, const std::string& jsonFil
 QualityMangerWgt::~QualityMangerWgt()
 {
 
+}
+
+void QualityMangerWgt::release()
+{
+	if (!m_ptrFileHandle.isEmpty())
+	{
+		m_ptrFileHandle.clear();//关闭不保存
+	}
 }
 
 void QualityMangerWgt::slot_onClickDeleteFile()
@@ -157,34 +168,40 @@ void QualityMangerWgt::slot_onClickDeleteFile()
 	QTableWidgetItem *item = m_tableFileList->item(row, 1);
 	if (item)
 	{ // 确保项存在
-		QString value = item->text(); // 获取项的值（文本）
-		auto iterWork = m_mapAllFile.find(value);
+		QString fileFullPath = item->text(); // 获取项的值（文本）
+		auto iterWork = m_mapAllFile.find(fileFullPath);
 		if (iterWork != m_mapAllFile.end())
 		{
-			if (m_currentFile == iterWork->second)//正在显示
+			if (m_ptrFileHandle.strFileFullPath == iterWork->first)//正在显示
 			{
 				m_tableSheetList->clearContents();
 				m_tableSheetList->setRowCount(0);
-				m_currentFile = nullptr;
+				m_ptrFileHandle.clear();
 			}
 			m_tableFileList->removeRow(row);
-			iterWork->second->dynamicCall("Close (Boolean)", false);
-			m_mapAllFile.erase(value);
-			m_jsonRoot.eraseKey(value.toStdString());
+			m_mapAllFile.erase(fileFullPath);
+
+			//更新Json文件
+			Json::Value& jsonHisFile = m_jsonRoot.at(m_strTitle.toStdString()).at("files");
+			jsonHisFile.clear();
+			for (const auto& iterFile : m_mapAllFile)
+			{
+				jsonHisFile.append(iterFile.first.toStdString());
+			}
 			saveJson();
 
 		}
 	}
 }
 
-void QualityMangerWgt::slot_onClickSlectFile()
+void QualityMangerWgt::slot_onClickAddFile()
 {
 	QString strFilePathName = QFileDialog::getOpenFileName(this, QStringLiteral("选择Excel文件"), "", tr("Exel file(*.xls *.xlsx)"));
 	if (strFilePathName.isNull()) 
 	{
 		return;
 	}
-	strFilePathName = QDir::toNativeSeparators(strFilePathName);
+	//strFilePathName = QDir::toNativeSeparators(strFilePathName);
 
 	if (m_mapAllFile.count(strFilePathName) != 0)
 	{
@@ -193,83 +210,73 @@ void QualityMangerWgt::slot_onClickSlectFile()
 	}
 
 	LOG_INFO("add excel file: %s", strFilePathName.toStdString().c_str());
-	if (openFile(strFilePathName))
+
+	auto pos = strFilePathName.lastIndexOf('/');
+	if (pos == -1)
 	{
-		std::string strFilePath = strFilePathName.toStdString();
-		m_jsonRoot[strFilePath] = Json::Value();
+		pos = strFilePathName.lastIndexOf('\\');
+	}
+	if (pos != -1)
+	{
+		QString fileName = strFilePathName.mid(pos + 1);
+		int rowIndex = m_tableFileList->rowCount();
+		m_tableFileList->insertRow(rowIndex);
+		QTableWidgetItem *nameItem = new QTableWidgetItem(fileName);
+		QTableWidgetItem *pathItem = new QTableWidgetItem(strFilePathName);
+		m_tableFileList->setItem(rowIndex, 0, nameItem);
+		m_tableFileList->setItem(rowIndex, 1, pathItem);
+		m_mapAllFile.insert(std::make_pair(strFilePathName, fileName));
+		Json::Value& jsonHisFile = m_jsonRoot.at(m_strTitle.toStdString()).at("files");
+		jsonHisFile.append(strFilePathName.toStdString());
 		saveJson();
 	}
 }
 
-void QualityMangerWgt::slot_onFileSelectChanged()
+void QualityMangerWgt::slot_onFileDoubleClicked(int row, int column)
 {
-	QList<QTableWidgetItem*> selectedItems = m_tableFileList->selectedItems();
-	if (selectedItems.isEmpty()) {
-		return;
-	}
-
-	// 假设我们只对整行选中感兴趣，并且只处理第一行选中的情况（通常是用户通过点击行号选择的整行）
-	QTableWidgetItem *firstSelectedItem = selectedItems.first();
-	int row = firstSelectedItem->row(); // 获取选中项所在的行号
 	AtomicLock lock(m_bChanging);
 
 	// 获取这一行的所有值
 	QTableWidgetItem *item = m_tableFileList->item(row, 1);
 	if (item) 
 	{ // 确保项存在
-		QString value = item->text(); // 获取项的值（文本）
-		auto iterWork = m_mapAllFile.find(value);
+		QString filePath = item->text(); // 获取项的值（文本）
+		auto iterWork = m_mapAllFile.find(filePath);
 		if (iterWork != m_mapAllFile.end())
 		{
-			m_currentFile = iterWork->second;
-			QAxObject *sheets = m_currentFile->querySubObject("Sheets");
+			if (!m_ptrFileHandle.isEmpty())
+			{
+				m_ptrFileHandle.clear();
+			}
+			
+			m_ptrFileHandle.ptrFileHandle = m_workbooks->querySubObject("Open (const QString&)", QDir::toNativeSeparators(iterWork->first));
+			if (nullptr == m_ptrFileHandle.ptrFileHandle)
+			{
+				QMessageBox::warning(this, u8"错误", u8"打开文件失败！");
+				return;
+			}
+			m_ptrFileHandle.strFileFullPath = iterWork->first;
+			QAxObject *sheets = m_ptrFileHandle.ptrFileHandle->querySubObject("Sheets");
 			int sheetNum = sheets->property("Count").toInt();
 			m_tableSheetList->clearContents();
 			m_tableSheetList->setRowCount(0);
 			int colNum = m_tableSheetList->columnCount();
-			if (m_jsonRoot.hasKey(value.toStdString()) && !m_jsonRoot[value.toStdString()].IsNull())
-			{
-				auto& jsonPos = m_jsonRoot[value.toStdString()];
-				for (int i = 0; i < sheetNum; ++i)
-				{
-					QAxObject *worksheet = m_currentFile->querySubObject("Worksheets(int)", i + 1);
-					m_tableSheetList->insertRow(i);
-					QString strSheetName = worksheet->property("Name").toString();
-					QTableWidgetItem *sheetName = new QTableWidgetItem(strSheetName);
-					m_tableSheetList->setItem(i, 0, sheetName);
-					for (int colIndex = 1; colIndex < colNum; ++colIndex)
-					{
-						QTableWidgetItem *sheetSelect = new QTableWidgetItem();
-						m_tableSheetList->setItem(i, colIndex, sheetSelect);
-						if (colIndex % 2)//奇数列
-						{
-							std::string typeIndex = std::to_string((colIndex + 1) / 2);
-							if (jsonPos.hasKey(strSheetName.toStdString()) && jsonPos[strSheetName.toStdString()].hasKey(typeIndex))
-							{
-								QString strText = jsonPos[strSheetName.toStdString()][typeIndex].ToString().c_str();
-								sheetSelect->setText(strText);
-							}
-						}
-					}
-				}
-				slot_onClickUpdateTable();
-			}
-			else
-			{
-				for (int i = 0; i < sheetNum; ++i)
-				{
-					QAxObject *worksheet = m_currentFile->querySubObject("Worksheets(int)", i + 1);
-					m_tableSheetList->insertRow(i);
-					QString strSheetName = worksheet->property("Name").toString();
-					QTableWidgetItem *sheetName = new QTableWidgetItem(strSheetName);
-					m_tableSheetList->setItem(i, 0, sheetName);
-					for (int colIndex = 1 ; colIndex <colNum; ++colIndex)
-					{
-						m_tableSheetList->setItem(i, colIndex, new QTableWidgetItem());
-					}
 
+			for (int i = 0; i < sheetNum; ++i)
+			{
+				QAxObject *worksheet = m_ptrFileHandle.ptrFileHandle->querySubObject("Worksheets(int)", i + 1);
+				m_tableSheetList->insertRow(i);
+				QString strSheetName = worksheet->property("Name").toString();
+				QTableWidgetItem *sheetName = new QTableWidgetItem(strSheetName);
+				m_tableSheetList->setItem(i, 0, sheetName);
+				for (int colIndex = 1; colIndex < colNum; ++colIndex)
+				{
+					QTableWidgetItem *sheetSelect = new QTableWidgetItem();
+					m_tableSheetList->setItem(i, colIndex, sheetSelect);
 				}
 			}
+			slot_onClickUpdateTable();
+			QMessageBox::information(this, u8"提示", u8"文件打开完成！");
 		}
 	}
 
@@ -277,7 +284,7 @@ void QualityMangerWgt::slot_onFileSelectChanged()
 
 void QualityMangerWgt::slot_onClickUpdateTable()
 {
-	if (!m_currentFile)
+	if (m_ptrFileHandle.isEmpty())
 	{
 		return;
 	}
@@ -286,22 +293,18 @@ void QualityMangerWgt::slot_onClickUpdateTable()
 	{
 		for (size_t colIndex = 1; colIndex < colNum; colIndex++)
 		{
-			if (colIndex % 2)//奇数列
+			QTableWidgetItem *itemPos = m_tableSheetList->item(rowIndex, colIndex);
+			if (itemPos)
 			{
-				QTableWidgetItem *itemPos = m_tableSheetList->item(rowIndex, colIndex);
-				if (itemPos && !itemPos->text().isEmpty())
+				// 获取并打印编辑完成的值
+				QAxObject *worksheet = m_ptrFileHandle.ptrFileHandle->querySubObject("Worksheets(int)", rowIndex + 1);
+				if (worksheet)
 				{
-					// 获取并打印编辑完成的值
-					QString value = itemPos->text();
-					QAxObject *worksheet = m_currentFile->querySubObject("Worksheets(int)", rowIndex + 1);
-					if (worksheet)
+					QAxObject *range = worksheet->querySubObject("Range(const QString&)", m_mapColName[colIndex].second.c_str());
+					if (range)
 					{
-						QAxObject *range = worksheet->querySubObject("Range(const QString&)", value);
-						if (range)
-						{
-							QVariant var = range->dynamicCall("Value");
-							m_tableSheetList->item(rowIndex, colIndex + 1)->setText(var.toString());
-						}
+						QVariant var = range->dynamicCall("Value");
+						m_tableSheetList->item(rowIndex, colIndex)->setText(var.toString());
 					}
 				}
 			}
@@ -326,6 +329,8 @@ void QualityMangerWgt::slot_onClickSaveTable()
 	QAxObject *cell = worksheet->querySubObject("Cells(int, int)", 1, 1);
 	//cell->dynamicCall("SetValue(const QVariant&)", u8"日期");
 	cell->dynamicCall("SetValue(const QVariant&)", "");
+
+	//设置质量问题列类型
 	for (const auto& iterMap : m_mapColName) 
 	{
 		cell = worksheet->querySubObject("Cells(int, int)", iterMap.first + 1, 1);
@@ -341,12 +346,9 @@ void QualityMangerWgt::slot_onClickSaveTable()
 
 		for (int colIndex = 1 ; colIndex < colCount ; ++colIndex)
 		{
-			if ((colIndex % 2) == 0)//值列
-			{
-				QTableWidgetItem *itemValue = m_tableSheetList->item(rowIndex, colIndex);
-				cell = worksheet->querySubObject("Cells(int, int)", colIndex / 2 + 1, rowIndex + 2);
-				cell->dynamicCall("SetValue(const QVariant&)", itemValue->text());
-			}
+			QTableWidgetItem *itemValue = m_tableSheetList->item(rowIndex, colIndex);
+			cell = worksheet->querySubObject("Cells(int, int)", colIndex + 1, rowIndex + 2);
+			cell->dynamicCall("SetValue(const QVariant&)", itemValue->text());
 		}
 	}
 
@@ -368,89 +370,29 @@ void QualityMangerWgt::slot_onClickSaveTable()
 		}
 	}
 
+	QAxObject *worksheets = workbook->querySubObject("Worksheets");
 	for (int sheetRow = 1; sheetRow < sheetRowNum; ++sheetRow)
 	{
-		QAxObject * newSheet = workbook->querySubObject("Add()");
-		worksheet->dynamicCall("SetName(const QString&)", vecTable[sheetRow][0]);
-		for (int sheetCol = 0; sheetCol < sheetColNum; ++sheetCol)
+		QAxObject * newSheet = worksheets->querySubObject("Add()");
+		//QAxObject * newSheet = workbook->querySubObject("Worksheets(int)", sheetRow + 1);
+		newSheet->dynamicCall("SetName(const QString&)", vecTable[sheetRow][0]);
+		//设置质量问题列类型
+		for (int sheetColIndex = 0; sheetColIndex < sheetColNum; ++sheetColIndex)
 		{
+			//第一行
+			cell = newSheet->querySubObject("Cells(int, int)", 1, sheetColIndex + 1);
+			cell->dynamicCall("SetValue(const QVariant&)", vecTable[0][sheetColIndex]);
+			cell = newSheet->querySubObject("Cells(int, int)", 2, sheetColIndex + 1);
+			cell->dynamicCall("SetValue(const QVariant&)", vecTable[sheetRow][sheetColIndex]);
 		}
 	}
-	
 
 	workbook->dynamicCall("SaveAs(const QString&)", QDir::toNativeSeparators(filePath));
+	QMessageBox::information(this, u8"提示", u8"文件保存完成！");
 	//workbook->dynamicCall("Close (Boolean)", false);
 	//workbook->dynamicCall("Release (void)");
 }
 
-void QualityMangerWgt::slot_onCellChanged(int row, int column)
-{
-	if ((column % 2)!= 1 || m_bChanging.load(std::memory_order_relaxed))//仅处理第二列
-	{
-		return;
-	}
-
-	QTableWidgetItem *itemPos = m_tableSheetList->item(row, column);
-	if (itemPos)
-	{
-		// 获取并打印编辑完成的值
-		QString value = itemPos->text();
-		QAxObject *worksheet = m_currentFile->querySubObject("Worksheets(int)", row + 1);
-		if (worksheet)
-		{
-			QAxObject *range = worksheet->querySubObject("Range(const QString&)", value);
-			if (range)
-			{
-				QVariant var = range->dynamicCall("Value");
-				QTableWidgetItem *itemValue = m_tableSheetList->item(row, column + 1);
-				itemValue->setText(var.toString());
-			}
-			//更新Json
-			Json::Value jvalue;
-			int colNum = m_tableSheetList->columnCount();
-			for (size_t rowNum = 0; rowNum < m_tableSheetList->rowCount(); rowNum++)
-			{
-				Json::Value jsonColPos;
-				QTableWidgetItem *itemSheet = m_tableSheetList->item(rowNum, 0);
-				for (const auto& iterCol :m_mapColName)
-				{
-					QTableWidgetItem *itemCol = m_tableSheetList->item(rowNum, 2 * iterCol.first - 1);
-					jsonColPos[std::to_string(iterCol.first)] = itemCol->text().toStdString();
-				}
-				jvalue[itemSheet->text().toStdString()] = jsonColPos;
-			}
-			for (const auto iterFile : m_mapAllFile)
-			{
-				if (iterFile.second == m_currentFile)
-				{
-					m_jsonRoot[iterFile.first.toStdString()] = jvalue;
-				}
-			}
-			saveJson();
-		}
-	}
-}
-
-void QualityMangerWgt::closeEvent(QCloseEvent *event)
-{
-	int ret = QMessageBox::question(this, u8"关闭窗口",
-		u8"确定要关闭窗口吗？",
-		QMessageBox::Yes | QMessageBox::No);
-	if (ret == QMessageBox::Yes) 
-	{
-
-		for (const auto& iterBook : m_mapAllFile)
-		{
-			iterBook.second->dynamicCall("Close (Boolean)", false);
-		}
-		m_excelApp->dynamicCall("Quit (void)");
-		event->accept(); // 接受关闭事件
-	}
-	else 
-	{
-		event->ignore(); // 忽略关闭事件，窗口保持打开状态
-	}
-}
 
 void QualityMangerWgt::saveJson()
 {
@@ -458,33 +400,7 @@ void QualityMangerWgt::saveJson()
 	output.open(m_jsonFilePath, std::ofstream::out);
 	if (output.is_open())
 	{
-		output << m_jsonRoot.dump() << std::endl;
+		output << m_jsonRoot.dumpStyle() << std::endl;
 		output.close();
 	}
-}
-
-bool QualityMangerWgt::openFile(QString strPath)
-{
-	if (_access(strPath.toStdString().c_str(), 0) == -1)
-		return false;
-
-	m_workbooks->dynamicCall("Open (const QString&)", strPath);
-	QAxObject *workbook = m_excelApp->querySubObject("ActiveWorkBook");
-	if (workbook)
-	{
-		auto pos = strPath.lastIndexOf('\\');
-		if (pos != -1)
-		{
-			QString fileName = strPath.mid(pos + 1);
-			int rowIndex = m_tableFileList->rowCount();
-			m_tableFileList->insertRow(rowIndex);
-			QTableWidgetItem *nameItem = new QTableWidgetItem(fileName);
-			QTableWidgetItem *pathItem = new QTableWidgetItem(strPath);
-			m_tableFileList->setItem(rowIndex, 0, nameItem);
-			m_tableFileList->setItem(rowIndex, 1, pathItem);
-			m_mapAllFile.insert(std::make_pair(strPath, workbook));
-			return true;
-		}
-	}
-	return false;
 }

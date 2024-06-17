@@ -16,40 +16,64 @@ std::string strJsonOut = "/media/sf_VMs/jsonTestOut.json";
 #endif // OS_WIN
 
 
+#if 1
+std::string strJsonTest = "D:/VMs/build/bin/RelWithDebInfo/config/colDef.json";
+std::string jsonContain = u8R"(
+{
+	"files" : 
+	[
+		"D:\\6.1-6.15.xlsx",
+		"D:\\5\\5.17-5.31.xls"
+	]
+}
+)";
+int main()
+{
+	Value obj1;
 
+	Json::Load(jsonContain, obj1);
+
+	cout << "obj1 before move\n" << obj1.dumpStyle() << endl;
+
+	std::cout << "输入任意字符继续..." << std::endl;
+	std::cin.get();
+	return 0;
+}
+#else
 /**
 *  Simple testing program that takes an input
 *  JSON file, loads it, and then dumps it the
 *  given output file.
 */
+
 int main()
 {
 	Value obj1;
-	
+
 	std::string errStr = Json::json_from_file(strJsonIn, obj1);
 
-	if (!errStr.empty()) 
+	if (!errStr.empty())
 	{
 		std::cout << "error message :" << errStr << std::endl;
 		return -1;
 	}
 
-	cout<< "obj1 before move\n" << obj1.dump() << endl;
+	cout << "obj1 before move\n" << obj1.dumpStyle() << endl;
 
-	std::cout << "dump json \n" << obj1.dump() << std::endl;
+	std::cout << "dumpStyle json \n" << obj1.dumpStyle() << std::endl;
 
 	Value obj2 = std::move(obj1);
-	cout << "obj2 after move\n" << obj2.dump() << endl;
-	cout << "obj1 after move\n" << obj1.dump() << endl;
+	cout << "obj2 after move\n" << obj2.dumpStyle() << endl;
+	cout << "obj1 after move\n" << obj1.dumpStyle() << endl;
 	obj1 = std::move(obj2);
-	cout << "obj2 after move\n" << obj2.dump() << endl;
-	cout << "obj1 after move\n" << obj1.dump() << endl;
+	cout << "obj2 after move\n" << obj2.dumpStyle() << endl;
+	cout << "obj1 after move\n" << obj1.dumpStyle() << endl;
 
 	ofstream output1;
 	output1.open(strJsonIn, std::ofstream::out);
 	if (output1.is_open())
 	{
-		output1 << obj1.dump() << std::endl;
+		output1 << obj1.dumpStyle() << std::endl;
 	}
 
 	//дJson
@@ -78,13 +102,13 @@ int main()
 
 
 	// Dump Obj to a string.
-	cout << Obj.dump() << endl;
+	cout << Obj.dumpStyle() << endl;
 
 	ofstream output;
-	output.open(strJsonOut,std::ofstream::out);
+	output.open(strJsonOut, std::ofstream::out);
 	if (output.is_open())
 	{
-		output << Obj.dump() << std::endl;
+		output << Obj.dumpStyle() << std::endl;
 		output.close();
 	}
 
@@ -92,3 +116,6 @@ int main()
 	std::cin.get();
 	return 0;
 }
+#endif
+
+

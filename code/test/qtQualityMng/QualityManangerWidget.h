@@ -48,42 +48,70 @@ class QualityMangerWgt :public QWidget
 {
 	Q_OBJECT
 public:
-	QualityMangerWgt(QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot,QWidget* parent = nullptr);
+	QualityMangerWgt(const QString& strTitle, const std::string& jsonFilePath, Json::Value& jsonRoot, QAxObject* axBooks, QWidget* parent = nullptr);
 	~QualityMangerWgt();
 
+	void release();
 
 public slots:
+	/*移除选中文档*/
 	void slot_onClickDeleteFile();
 
-	void slot_onClickSlectFile();
+	/*添加文件按钮*/
+	void slot_onClickAddFile();
 
-	void slot_onFileSelectChanged();
+	/*左侧列表框控件选择变化*/
+	void slot_onFileDoubleClicked(int row, int column);
 
+	/*更新表格数据*/
 	void slot_onClickUpdateTable();
 
+	/*保存表格数据到EXCEL*/
 	void slot_onClickSaveTable();
 
-	void slot_onCellChanged(int row, int column);
-protected:
-	void closeEvent(QCloseEvent *event) override;
+
 
 private:
 	void saveJson();
 
-	bool openFile(QString strPath);
 private:
-	QAxObject* m_excelApp;
-	QAxObject* m_workbooks;
-	
-	std::map<QString, QAxObject*> m_mapAllFile;
-	QAxObject* m_currentFile = nullptr;
+	struct stCurentFile 
+	{
+		QString strFileFullPath;
+		QAxObject* ptrFileHandle = nullptr;
 
+		void clear() 
+		{
+			strFileFullPath.clear();
+			if (ptrFileHandle)
+			{
+				ptrFileHandle->dynamicCall("Close (Boolean)", false);//关闭不保存
+				ptrFileHandle->dynamicCall("Release (void)");
+				ptrFileHandle = nullptr;
+			}
+		}
+
+		bool isEmpty() 
+		{
+			return strFileFullPath.isEmpty() && nullptr == ptrFileHandle;
+		}
+	};
+
+	QAxObject* m_workbooks;//所有的excel表格
+
+	//当前打开的
+	stCurentFile m_ptrFileHandle;
+
+	std::map<QString, QString> m_mapAllFile;//<全路径，文件名>
+	
 	std::atomic_bool m_bChanging;//表格是否正在添加行等操作
 
 	std::map<int, std::pair<std::string,std::string>> m_mapColName;//<列索引,<列名称,列位置>>
 
-	const std::string& m_jsonFilePath;
 	QString m_strTitle;//当前Tab页标题
+
+	const std::string& m_jsonFilePath;
+	
 	Json::Value& m_jsonRoot;//根Json
 private:
 	QPushButton* m_btnDeleRow;

@@ -11,21 +11,18 @@ set(CMAKE_AUTOUIC ON)
 
 #设置Qt库
 if(WIN32)
-set(QT Core Gui Widgets AxContainer AxServer AxBase)
+set(QTCOMPONENT Core Gui Widgets AxContainer AxServer AxBase)
 else(UNIX)
-set(QT Core Gui Widgets)
+set(QTCOMPONENT Core Gui Widgets)
 endif()
 
 # 查找Qt库
-find_package(Qt5 REQUIRED ${QT})
+find_package(Qt5 REQUIRED ${QTCOMPONENT})
 
-#include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Gui_INCLUDE_DIRS}
- #       ${Qt5Widgets_INCLUDE_DIRS} ${Qt5AxContainer_INCLUDE_DIRS} ${Qt5AxServer_INCLUDE_DIRS} ${Qt5ActiveQt_INCLUDE_DIRS})
-		
-include_directories(${Qt5Core_INCLUDE_DIRS})
-		
-set(QT_LIBRARIES ${Qt5Widgets_LIBRARIES} ${Qt5Core_LIBRARIES} 
-		${Qt5Gui_LIBRARIES} ${Qt5AxContainer_LIBRARIES} ${Qt5AxServer_LIBRARIES} ${Qt5ActiveQt_LIBRARIES} ${Qt5AxBase_LIBRARIES})
+foreach(QtComp ${QTCOMPONENT})
+	include_directories(${Qt5${QtComp}_INCLUDE_DIRS})
+	set(QT_LIBRARIES ${QT_LIBRARIES} ${Qt5${QtComp}_LIBRARIES})
+endforeach()
 
 message("QT_LIBRARIES ${QT_LIBRARIES}")
 
@@ -39,12 +36,15 @@ source_group("include" FILES ${FILE_HEADS})
 file(GLOB FILE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 source_group("source" FILES ${FILE_SOURCES})	
 
+file(GLOB QT_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/*.qrc")
+source_group("resource" FILES ${QT_RESOURCE})	
 
 # 增加动态链接库
 add_executable(${PROJECT_NAME} #WIN32
 	${COMMON_HEADS}
 	${FILE_HEADS}
-	${FILE_SOURCES})
+	${FILE_SOURCES}
+	${QT_RESOURCE})
 	
 target_link_libraries(${PROJECT_NAME} 
 	${QT_LIBRARIES}

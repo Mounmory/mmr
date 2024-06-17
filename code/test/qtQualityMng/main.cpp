@@ -1,6 +1,7 @@
 ﻿#include "Common_def.h"
 #include "QualityManangerWidget.h"
-#include "util/UtilFunc.h"
+#include "CQMTabWidget.h"
+
 
 
 /*
@@ -17,28 +18,8 @@ int main(int argc, char *argv[])
 #ifdef OS_WIN
 	QApplication a(argc, argv);
 	logInstancePtr->start();
-	//获取当前进程路径
-	std::string strAppPath, strAppName;
-	mmrUtil::getAppPathAndName(strAppPath, strAppName);
-	std::string configPath = strAppPath + "config/colDef.json";
-	Json::Value jsonRoot;
-	std::string strErr = Json::json_from_file(configPath, jsonRoot);
-	if (jsonRoot.IsNull() || !strErr.empty())
-	{
-		LOG_ERROR_PRINT("parse json file [%s] failed! error message is: %s.", configPath.c_str(), strErr.c_str());
-		QMessageBox::warning(nullptr, "错误", u8"解析配置文件失败");
-		return -1;
-	}
-	QTabWidget tabWidget;
-	tabWidget.setWindowTitle(u8"质量问题统计");
-	tabWidget.setMinimumHeight(650);
-	tabWidget.setMinimumWidth(850);
-	for (const auto iterTab : jsonRoot.ObjectRange())
-	{
-		QString strTitle = iterTab.first.c_str();
-		QualityMangerWgt* tabWgt = new QualityMangerWgt(strTitle, configPath, jsonRoot);
-		tabWidget.addTab(tabWgt, strTitle);
-	}
+
+	CQMTagWidget tabWidget;
 	tabWidget.show();
 	return a.exec();
 

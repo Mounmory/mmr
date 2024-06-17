@@ -345,7 +345,47 @@ public:
 		return JSONConstWrapper<deque<Value>>(nullptr);
 	}
 
-	string dump(int depth = 0, string tab = "\t") const {
+	string dumpFast() const {
+		switch (Type) {
+		case emJsonType::Null:
+			return "null";
+		case emJsonType::Object: {
+			string s = "{";
+			bool skip = true;
+			for (auto &p : *Internal.Map) {
+				if (!skip) s += ",";
+				s += ("\"" + p.first + "\":" + p.second.dumpFast());
+				skip = false;
+			}
+			s += "}";
+			return s;
+		}
+		case emJsonType::Array: {
+			string s = "[";
+			bool skip = true;
+			for (auto &p : *Internal.List)
+			{
+				if (!skip) s += ",";
+				s += p.dumpFast();
+				skip = false;
+			}
+			s += "]";
+			return s;
+		}
+		case emJsonType::String:
+			return "\"" + json_escape(*Internal.String) + "\"";
+		case emJsonType::Floating:
+			return std::to_string(Internal.Float);
+		case emJsonType::Integral:
+			return std::to_string(Internal.Int);
+		case emJsonType::Boolean:
+			return Internal.Bool ? "true" : "false";
+		default:
+			return "";
+		}
+		return "";
+	}
+	string dumpStyle(int depth = 0, string tab = "\t") const {
 		string pad = "";
 		for (int i = 0; i < depth; ++i, pad += tab);
 
@@ -357,7 +397,7 @@ public:
 			bool skip = true;
 			for (auto &p : *Internal.Map) {
 				if (!skip) s += ",\n";
-				s += (pad + tab + "\"" + p.first + "\" : " + p.second.dump(depth + 1, tab));
+				s += (pad + tab + "\"" + p.first + "\" : " + p.second.dumpStyle(depth + 1, tab));
 				skip = false;
 			}
 			s += ("\n" + pad + "}");
@@ -365,10 +405,13 @@ public:
 		}
 		case emJsonType::Array: {
 			string s = "\n" + pad + "[\n";
+			string childPad = pad + tab;
 			bool skip = true;
-			for (auto &p : *Internal.List) {
-				if (!skip) s += ", ";
-				s += p.dump(depth + 1, tab);
+			for (auto &p : *Internal.List) 
+			{
+				if (!skip) s += ",\n";
+				s += childPad;
+				s += p.dumpStyle(depth + 1, tab);
 				skip = false;
 			}
 			s += "\n" + pad + "]";
@@ -437,7 +480,7 @@ Value Array(T... args) {
 }
 
 //std::ostream& operator<<(std::ostream &os, const Value &json) {
-//	os << json.dump();
+//	os << json.dumpStyle();
 //	return os;
 //}
 
