@@ -17,6 +17,8 @@ int main(int argc, char *argv[])
 
 #ifdef OS_WIN
 	QApplication a(argc, argv);
+	//避免主窗口隐藏时，子窗口退出造成程序退出
+	QApplication::setQuitOnLastWindowClosed(false);
 	logInstancePtr->start();
 
 	CQMTagWidget tabWidget;

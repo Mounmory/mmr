@@ -13,16 +13,16 @@
 
 BEGINE_NAMESPACE(mmrUtil)
 
-	enum class emLogLevel
-	{
-		Log_Off = -1,
-		Log_Forece = 0,
-		Log_Fatal,
-		Log_Error,
-		Log_Warn,
-		Log_Info,
-		Log_Debug
-	};
+enum class emLogLevel
+{
+	Log_Off = -1,
+	Log_Forece = 0,
+	Log_Fatal,
+	Log_Error,
+	Log_Warn,
+	Log_Info,
+	Log_Debug
+};
 
 class CBigBuff 
 {

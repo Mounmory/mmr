@@ -24,7 +24,7 @@ foreach(QtComp ${QTCOMPONENT})
 	set(QT_LIBRARIES ${QT_LIBRARIES} ${Qt5${QtComp}_LIBRARIES})
 endforeach()
 
-message("QT_LIBRARIES ${QT_LIBRARIES}")
+#message("QT_LIBRARIES ${QT_LIBRARIES}")
 
 include_directories(${CMAKE_SOURCE_DIR}/common/include)
 file(GLOB COMMON_HEADS "${CMAKE_SOURCE_DIR}/common/include/*.h")

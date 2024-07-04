@@ -9,7 +9,7 @@ https://blog.csdn.net/wuyuewei/article/details/134329533
 https://blog.csdn.net/hitzsf/article/details/117174007
 */
 #ifdef OS_WIN
-#include <ActiveQt/QAxObject>
+#include <QAxObject>
 #include "Windows.h"
 #endif // OS_WIN
 

@@ -388,7 +388,7 @@ void QualityMangerWgt::slot_onClickSaveTable()
 	}
 
 	workbook->dynamicCall("SaveAs(const QString&)", QDir::toNativeSeparators(filePath));
-	QMessageBox::information(this, u8"提示", u8"文件保存完成！");
+	QMessageBox::information(this, u8"提示", QString(u8"文件成功保存到：%1").arg(filePath));
 	//workbook->dynamicCall("Close (Boolean)", false);
 	//workbook->dynamicCall("Release (void)");
 }

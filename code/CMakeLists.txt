@@ -20,6 +20,7 @@ if(WIN32)
 	endif()
 
 	link_directories(${THIRD_PART_DIR}/lib/win64)
+	option(ENABLE_WINDUMP "Windows MiniDumpWriteDump" "OFF")
 	message("platform windows")
 else(UNIX)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")#c++11 do not has make_unique
@@ -54,6 +55,8 @@ include_directories(${COMMON_INCLUDE_DIR})
 #include_directories(${COMMON_INCLUDE_UTIL_DIR})
 #include_directories(${COMMON_INCLUDE_LIBNET_DIR})
 
+#包含当前目录
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 #输出可执行文件目录
 #SET(TARGET_BIN_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/bin")
@@ -63,13 +66,24 @@ ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(service)
 #ADD_SUBDIRECTORY(tools)
 
-if(WIN32)
-	option(BUILD_CREO_LIB "build creo lib" "ON")
-	if(BUILD_CREO_LIB)
-		ADD_SUBDIRECTORY(creo)
-	endif(BUILD_CREO_LIB)
-	option(ENABLE_WINDUMP "Windows MiniDumpWriteDump" OFF)
-endif(WIN32)
+option(BUILD_CREO_LIB "build creo lib" "OFF")
+if(WIN32 AND BUILD_CREO_LIB)
+	#设置CreoTookit头文件、库文件路径
+	set(CREO_TOOKIT_INCLUDE_PATH "" CACHE PATH "set Protookit include path")
+	set(CREO_TOOKIT_LIB_PATH "" CACHE PATH "set Protookit include path")
+	#设置安装路径
+	set(CREO_TOOKIT_INSTALL_PATH "" CACHE PATH "set Protookit install path")
+	
+	if(NOT CREO_TOOKIT_INCLUDE_PATH)
+		message(FATAL_ERROR "please set protookit include folder to CREO_TOOKIT_INCLUDE_PATH value! you can set BUILD_CREO_LIB OFF to cancel build Creo module.")
+	endif()
+	if(NOT CREO_TOOKIT_LIB_PATH)
+		message(FATAL_ERROR "please set protookit library folder to CREO_TOOKIT_LIB_PATH value!")
+	endif()
+	#设置Creo安装路径
+	
+	ADD_SUBDIRECTORY(creo)
+endif(WIN32 AND BUILD_CREO_LIB)
 
 #构建测试用例
 option(BUILD_TESTS "build tests" "ON")
