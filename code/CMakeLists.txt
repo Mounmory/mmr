@@ -5,11 +5,13 @@ project(Mounmory)
 #工程放设置到文件夹中
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-set(THIRD_PART_DIR "" CACHE PATH "set third part depend directory")
+set(THIRD_PART_DIR "${CMAKE_SOURCE_DIR}/../3rdParty" CACHE PATH "set third part depend directory")
 
 if(NOT THIRD_PART_DIR)
 	message(FATAL_ERROR "please set THIRD_PART_DIR value!")
 endif()
+
+message(STATUS "THIRD_PART_DIR value is ${THIRD_PART_DIR}")
 
 if(WIN32)
 	STRING(REPLACE "-O2" "-Od" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})#取消优化

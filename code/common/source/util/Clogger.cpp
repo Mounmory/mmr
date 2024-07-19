@@ -110,7 +110,7 @@ bool mmrUtil::CLogger::init(const std::string& strPath, const std::string& strNa
 	m_strLogName = strName;
 	m_strFilePath = m_strLogDir + m_strLogName + ".log";
 #ifdef OS_WIN
-	if (_access(m_strLogDir.c_str(), 0) == -1)//如果数据库文件夹不存在，则创建
+	if (_access(m_strLogDir.c_str(), 0) == -1)//如果文件夹不存在，则创建
 	{
 		if (CreateDirectory(m_strLogDir.c_str(), 0) == false)
 		{

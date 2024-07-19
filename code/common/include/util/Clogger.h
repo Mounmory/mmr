@@ -24,77 +24,72 @@ enum class emLogLevel
 	Log_Debug
 };
 
-class CBigBuff 
-{
-public:
-	CBigBuff() = delete;
-	CBigBuff(CBigBuff&) = delete;
-	CBigBuff(CBigBuff&&) = delete;
 
-	CBigBuff(uint32_t ulLen)
-		: m_buf(new char[ulLen])
-		, m_ulLen(ulLen - 1)//长度-1，避免添最后一位置空越界
-		, m_ulPos(0)
-		, m_usTryIncrease(0)
-	{
-		if (ulLen < 2048)
-		{
-			std::cerr << "[" << __FUNCTION__ << "][" << __LINE__ << "CBigBuff construct init size is less than 2048!" << std::endl;
-		}
-	};
-
-	~CBigBuff() 
-	{
-		delete[] m_buf;
-	}
-
-	void tryWrite(char* buf, uint16_t len) 
-	{
-		memcpy(m_buf + m_ulPos, buf, len);
-		m_usTryIncrease += len;
-	}
-
-	void doneTry() {
-		m_ulPos += m_usTryIncrease;
-		m_usTryIncrease = 0;
-	}
-
-	void clearTry() 
-	{ 
-		m_usTryIncrease = 0;
-		m_buf[m_ulPos] = 0x00;
-	}
-
-	uint32_t getTryAvailid() { return (m_ulLen - m_ulPos - m_usTryIncrease); }
-
-	char* getTryCurrent() { return (m_buf + m_ulPos + m_usTryIncrease); }
-
-	void addTryIncrease(uint16_t weakLen) { m_usTryIncrease += weakLen; }
-
-	void clear() {
-		m_ulPos = 0; 
-		m_usTryIncrease = 0;
-	}
-
-	char* getBuf() { return m_buf; }
-
-	uint32_t getMaxLen() { return m_ulLen; }
-
-	uint32_t getSize() { return m_ulPos; }
-
-
-private:
-	char* m_buf;
-	uint32_t m_ulLen;//buf长度
-	uint32_t m_ulPos;//当前buf位置
-	uint32_t m_usTryIncrease;
-};
 
 class COMMON_CLASS_API CLogger
 {
 private:
 	CLogger();
 	~CLogger();
+
+	class CBigBuff
+	{
+	public:
+		CBigBuff() = delete;
+		CBigBuff(CBigBuff&) = delete;
+		CBigBuff(CBigBuff&&) = delete;
+
+		CBigBuff(uint32_t ulLen)
+			: m_buf(new char[ulLen])
+			, m_ulLen(ulLen - 1)//长度-1，避免添最后一位置空越界
+			, m_ulPos(0)
+			, m_usTryIncrease(0)
+		{
+		};
+
+		~CBigBuff() { delete[] m_buf; }
+
+		void tryWrite(char* buf, uint16_t len)
+		{
+			memcpy(m_buf + m_ulPos, buf, len);
+			m_usTryIncrease += len;
+		}
+
+		void doneTry() {
+			m_ulPos += m_usTryIncrease;
+			m_usTryIncrease = 0;
+		}
+
+		void clearTry()
+		{
+			m_usTryIncrease = 0;
+			m_buf[m_ulPos] = 0x00;
+		}
+
+		uint32_t getTryAvailid() { return (m_ulLen - m_ulPos - m_usTryIncrease); }
+
+		char* getTryCurrent() { return (m_buf + m_ulPos + m_usTryIncrease); }
+
+		void addTryIncrease(uint16_t weakLen) { m_usTryIncrease += weakLen; }
+
+		void clear() {
+			m_ulPos = 0;
+			m_usTryIncrease = 0;
+		}
+
+		char* getBuf() { return m_buf; }
+
+		uint32_t getMaxLen() { return m_ulLen; }
+
+		uint32_t getSize() { return m_ulPos; }
+
+	private:
+		char* m_buf;
+		uint32_t m_ulLen;//buf长度
+		uint32_t m_ulPos;//当前buf位置
+		uint32_t m_usTryIncrease;
+	};
+
 public:
 	static CLogger* getLogger();
 
