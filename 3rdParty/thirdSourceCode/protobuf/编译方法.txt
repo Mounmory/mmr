@@ -1,0 +1,22 @@
+linux编译
+	# 以 protobuf 3.21.12 为例
+	# 自行下载源码包, 解压缩
+	$ tar zxvf protobuf-cpp-3.21.12.tar.gz 
+	# 进入到解压目录
+	$ cd protobuf-3.21.12/
+	# 构建并安装
+	$ ./configure         # 检查安装环境, 生成 makefile
+	$ make                # 编译
+	$ sudo make install   # 安装
+
+	若提示运行时找不到库，将安装的库目录设置到库搜索路径
+	$ vim ~/.bashrc
+	添加如下内容
+		export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH
+	$ source ~/.bashrc
+	
+window编译
+
+
+
+

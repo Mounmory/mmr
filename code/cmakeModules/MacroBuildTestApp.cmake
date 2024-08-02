@@ -8,7 +8,7 @@ MACRO(build_test_app targetName)
 	MMR #prifix
     "" # no options
     "FOLDER" # one value args
-    "TARGET_LIBRARIES;TARGET_WIN_LIBS;TARGET_LINUX_LIBS" # multi value args
+    "TARGET_LIBRARIES;TARGET_WIN_LIBS;TARGET_LINUX_LIBS;TARGET_SRC_FILES" # multi value args
     ${ARGN}
     )
 	
@@ -37,6 +37,7 @@ MACRO(build_test_app targetName)
 
 	# 增加动态链接库
 	add_executable(${PROJECT_NAME} #WIN32
+		${MMR_TARGET_SRC_FILES}
 		${COMMON_HEADS}
 		${FILE_HEADS}
 		${FILE_SOURCES})

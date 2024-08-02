@@ -52,6 +52,9 @@ SET(COMMON_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/common/include)
 SET(COMMON_INCLUDE_UTIL_DIR ${CMAKE_SOURCE_DIR}/common/include/util)
 SET(COMMON_INCLUDE_LIBNET_DIR ${CMAKE_SOURCE_DIR}/common/include/libnet)
 
+#protobuf生成源文件路径
+SET(PROTO_GENERATE_FILE_PATH ${CMAKE_SOURCE_DIR}/protoBuf/generate)
+
 include_directories(${THIRD_PART_DIR}/include)
 include_directories(${COMMON_INCLUDE_DIR})
 #include_directories(${COMMON_INCLUDE_UTIL_DIR})

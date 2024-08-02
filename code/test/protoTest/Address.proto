@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-package MMR;
-
-message Address
-{
-  int32 num = 1;
-  bytes addr = 2;
-}
