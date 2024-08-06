@@ -19,7 +19,7 @@ else(WIN32)
 set(LINK_LIBS mmrUtil protobuf)
 endif(WIN32)
 
-build_test_app(protoTest
+build_test_app(${PROJECT_NAME}
 	TARGET_SRC_FILES ${PROTO_HEADS} ${PROTO_SRC}
 	TARGET_LIBRARIES ${LINK_LIBS}
 	)

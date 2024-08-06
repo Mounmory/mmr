@@ -2,7 +2,7 @@
 if(UNIX)
 project(CloudMeetingServer)
 	
-build_test_app(CloudMeetingServer
+build_test_app(${PROJECT_NAME}
 	TARGET_LIBRARIES pthread
 	)
 endif()

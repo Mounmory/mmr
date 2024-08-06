@@ -9,6 +9,6 @@ include_directories(${COMMON_INCLUDE_LIBNET_DIR}/http)
 include_directories(${COMMON_INCLUDE_LIBNET_DIR}/util)
 include_directories(${COMMON_INCLUDE_LIBNET_DIR}/hv)
 
-build_test_app(TCPServetTest
+build_test_app(${PROJECT_NAME}
 	TARGET_LIBRARIES mmrNet
 	)

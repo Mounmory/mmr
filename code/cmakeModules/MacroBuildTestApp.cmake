@@ -31,6 +31,7 @@ MACRO(build_test_app targetName)
 	source_group("include" FILES ${FILE_HEADS})
 
 	file(GLOB FILE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/*.c"
 		"${CMAKE_CURRENT_SOURCE_DIR}/*.cc")
 	source_group("source" FILES ${FILE_SOURCES})	
 
